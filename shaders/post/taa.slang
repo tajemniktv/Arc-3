@@ -11,7 +11,8 @@ Sampler2D<float4> texFinalPrev;
 Sampler2D<float2> texVelocity;
 Sampler2D<float> mainDepthTex;
 
-static const uint sharedBufferRes = 18;
+static const uint groupRes = 16;
+static const uint sharedBufferRes = groupRes+2;
 static const uint sharedBufferSize = sharedBufferRes*sharedBufferRes;
 groupshared float3 sharedBuffer[sharedBufferSize];
 
@@ -62,12 +63,12 @@ struct ComputeInput {
 };
 
 [[shader("compute")]]
-[numthreads(16,16,1)]
+[numthreads(groupRes,groupRes,1)]
 void applyTaa(ComputeInput input) {
     uint i_base = input.groupIndex * 2u;
 
     if (i_base < sharedBufferSize) {
-        uint2 uv_base = input.groupPos.xy * 16u - 1u;
+        uint2 uv_base = input.groupPos.xy * groupRes - 1u;
 
         for (uint i = 0u; i < 2u; i++) {
             uint i_shared = i_base + i;
