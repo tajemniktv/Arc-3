@@ -7,6 +7,7 @@ RWTexture2D<float4> imgFinal;
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinalPrev;
 
+Sampler2D<float4> texFinal;
 Sampler2D<float4> texFinalPrev;
 Sampler2D<float2> texVelocity;
 Sampler2D<float> mainDepthTex;
@@ -84,7 +85,7 @@ void applyTaa(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = imgFinal[uv_base + uv_i].rgb;
+                float3 color = texFinal[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
         }

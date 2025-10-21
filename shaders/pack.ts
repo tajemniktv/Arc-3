@@ -1,4 +1,6 @@
-const ENABLE_TAA = false;
+import {BufferFlipper} from "./scripts/BufferFlipper";
+
+const ENABLE_TAA = true;
 
 
 export function configureRenderer(renderer: RendererConfig): void {
@@ -9,11 +11,19 @@ export function configureRenderer(renderer: RendererConfig): void {
 }
 
 export function configurePipeline(pipeline: PipelineConfig): void {
-    const texFinal = pipeline.createImageTexture("texFinal", "imgFinal")
+    const texFinalA = pipeline.createImageTexture("texFinalA", "imgFinalA")
         .width(screenWidth)
         .height(screenHeight)
         .format(Format.RGBA16F)
         .build();
+
+    const texFinalB = pipeline.createImageTexture("texFinalB", "imgFinalB")
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .build();
+
+    const finalFlipper = new BufferFlipper(texFinalA, texFinalB);
 
     let texVelocity : BuiltTexture | undefined;
     if (ENABLE_TAA) {
@@ -48,7 +58,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("objects/basic")
         .exportBool("disableFog", true)
         .exportBool("EnableTAA", ENABLE_TAA)
-        .target(0, texFinal);
+        .target(0, finalFlipper.getWriteTexture());
     if (ENABLE_TAA) shaderSky.target(1, texVelocity);
     shaderSky.compile();
 
@@ -56,10 +66,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("objects/basic")
         .exportBool("disableFog", false)
         .exportBool("EnableTAA", ENABLE_TAA)
-        .target(0, texFinal);
+        .target(0, finalFlipper.getWriteTexture());
     if (ENABLE_TAA) shaderBasic.target(1, texVelocity);
     shaderBasic.compile();
     
+    finalFlipper.flip();
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
@@ -70,13 +81,20 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 8),
                 1)
+            .overrideObject("texFinal", finalFlipper.getReadTextureName())
+            .overrideObject("imgFinal", finalFlipper.getWriteImageName())
             .compile();
+
+        finalFlipper.flip();
     }
 
     postRender.createComposite("tonemap")
         .location("post/tonemap", "tonemap")
-        .target(0, texFinal)
+        .target(0, finalFlipper.getWriteTexture())
+        .overrideObject("texFinal", finalFlipper.getReadTextureName())
         .compile();
+
+    finalFlipper.flip();
 
     if (ENABLE_TAA) {
         postRender.createCompute("sharpen")
@@ -85,12 +103,18 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 8),
                 1)
+            .overrideObject("texFinal", finalFlipper.getReadTextureName())
+            .overrideObject("imgFinal", finalFlipper.getWriteImageName())
             .compile();
+        
+        finalFlipper.flip();
     }
 
     postRender.end();
 
-    pipeline.createCombinationPass("post/final").compile();
+    pipeline.createCombinationPass("post/final")
+        .overrideObject("texFinal", finalFlipper.getReadTextureName())
+        .compile();
 }
 
 export function beginFrame(state : WorldState) : void {

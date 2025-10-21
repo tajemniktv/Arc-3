@@ -6,6 +6,8 @@ import lib.common;
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;
 
+Sampler2D<float4> texFinal;
+
 extern static const float sharpness = 0.5;
 static const uint groupResX = 16;
 static const uint groupResY = 8;
@@ -89,7 +91,7 @@ void sharpen(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = imgFinal[uv_base + uv_i].rgb;
+                float3 color = texFinal[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
         }
