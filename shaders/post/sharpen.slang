@@ -1,8 +1,6 @@
 import aperture;
 import lib.common;
 
-// https://github.com/GPUOpen-Effects/FidelityFX-CAS/blob/master/ffx-cas/ffx_cas.h#L423
-
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;
 
@@ -17,18 +15,6 @@ static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
 groupshared float3 sharedBuffer[sharedBufferSize];
 
-
-float AMin3F1(float x, float y, float z) {
-    return min(x, min(y, z));
-}
-
-float minOf(float x, float y, float z) {
-    return min(x, min(y, z));
-}
-
-float AMax3F1(float x, float y, float z) {
-    return max(x, max(y, z));
-}
 
 // int MORTON_MASKS[5] = int[](0x55555555, 0x33333333, 0x0F0F0F0F, 0x00FF00FF, 0x0000FFFF);
 
@@ -84,6 +70,7 @@ void sharpen(ComputeInput input) {
     uint i_base = input.groupIndex * 2u;
 
     if (i_base < sharedBufferSize) {
+        // preload shared memory
         uint2 uv_base = input.groupPos.xy * uint2(groupResX, groupResY) - 1u;
 
         for (uint i = 0u; i < 2u; i++) {
@@ -100,36 +87,27 @@ void sharpen(ComputeInput input) {
     barrier();
 
     if (all(input.globalPos.xy < ap.game.screenSize)) {
+        // Simplified version of "slow" CAS without upscaling or better diagonals
+        // https://github.com/GPUOpen-Effects/FidelityFX-CAS/blob/master/ffx-cas/ffx_cas.h#L423
+
+        const float peak = -rcp(lerp(8.0, 5.0, sharpness));
+
         int2 uv = input.localPos.xy + 1;
-        //float3 a = sharedBuffer[getSharedIndex(uv + int2(-1,-1))];
         float3 b = sharedBuffer[getSharedIndex(uv + int2( 0,-1))];
-        //float3 c = sharedBuffer[getSharedIndex(uv + int2( 1,-1))];
         float3 d = sharedBuffer[getSharedIndex(uv + int2(-1, 0))];
         float3 e = sharedBuffer[getSharedIndex(uv)];
         float3 f = sharedBuffer[getSharedIndex(uv + int2( 1, 0))];
-        //float3 g = sharedBuffer[getSharedIndex(uv + int2(-1, 1))];
         float3 h = sharedBuffer[getSharedIndex(uv + int2( 0, 1))];
-        //float3 i = sharedBuffer[getSharedIndex(uv + int2( 1, 1))];
 
-        float3 mn;
-        mn.r = AMin3F1(AMin3F1(d.r, e.r, f.r), b.r, h.r);
-        mn.g = AMin3F1(AMin3F1(d.g, e.g, f.g), b.g, h.g);
-        mn.b = AMin3F1(AMin3F1(d.b, e.b, f.b), b.b, h.b);
-        
-        float3 mx;
-        mx.r = AMax3F1(AMax3F1(d.r, e.r, f.r), b.r, h.r);
-        mx.g = AMax3F1(AMax3F1(d.g, e.g, f.g), b.g, h.g);
-        mx.b = AMax3F1(AMax3F1(d.b, e.b, f.b), b.b, h.b);
+        float3 area_min = minOf(minOf(d, e, f), b, h);
+        float3 area_max = maxOf(maxOf(d, e, f), b, h);
 
-        float3 rcpM = rcp(mx);
+        float3 amp = min(area_min, 1.0 - area_max) * rcp(area_max);
+        float3 w = sqrt(saturate(amp)) * peak;
 
-        float3 amp = saturate(min(mn, 1.0 - mx) * rcpM);
-        const float peak = -rcp(lerp(8.0, 5.0, sharpness));
-        float3 w = sqrt(amp) * peak;
+        float3 weight_inv = rcp(1.0 + 4.0*w);
+        float3 color = ((b + d + f + h) * w + e) * weight_inv;
 
-        float3 rcpWeight = rcp(1.0 + 4.0*w);
-        float3 color = saturate(((b + d + f + h) * w + e) * rcpWeight);
-
-        imgFinal[input.globalPos.xy] = float4(color, 1.0);
+        imgFinal[input.globalPos.xy] = float4(saturate(color), 1.0);
     }
 }

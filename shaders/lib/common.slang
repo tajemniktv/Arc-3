@@ -1,3 +1,19 @@
+float minOf(float x, float y, float z) {
+    return min(x, min(y, z));
+}
+
+float3 minOf(float3 x, float3 y, float3 z) {
+    return min(x, min(y, z));
+}
+
+float maxOf(float x, float y, float z) {
+    return max(x, max(y, z));
+}
+
+float3 maxOf(float3 x, float3 y, float3 z) {
+    return max(x, max(y, z));
+}
+
 float3 mul3(const in float4x4 matrix, const in float3 vector) {
     return mul(matrix, float4(vector, 1.0)).xyz;
     // TODO: transpose translation?

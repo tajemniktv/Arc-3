@@ -130,11 +130,11 @@ void applyTaa(ComputeInput input) {
         // in7 = mul(RGB_TO_YUV, in7);
         // in8 = mul(RGB_TO_YUV, in8);
         
-        float3 minColor = min(min(min(in0, in1), min(in2, in3)), in4);
-        float3 maxColor = max(max(max(in0, in1), max(in2, in3)), in4);
+        float3 minColor = minOf(minOf(in0, in1, in2), in3, in4);
+        minColor = minOf(minOf(in5, in6, in7), in8, minColor);
 
-        minColor = min(min(min(in5, in6), min(in7, in8)), minColor);
-        maxColor = max(max(max(in5, in6), max(in7, in8)), maxColor);
+        float3 maxColor = maxOf(maxOf(in0, in1, in2), in3, in4);
+        maxColor = maxOf(maxOf(in5, in6, in7), in8, maxColor);
         
         float3 preclamping = antialiased;
         antialiased = clamp(antialiased, minColor, maxColor);
