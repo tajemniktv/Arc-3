@@ -1,25 +1,11 @@
-// This configures basic settings for the world.
 export function configureRenderer(renderer: RendererConfig): void {
-    // These settings mimic Vanilla Minecraft's rendering settings.
-    // mergedHandDepth is used to avoid needing to merge the hand depth; however, you will likely want this off for more complex shaders.
     renderer.mergedHandDepth = true;
     renderer.ambientOcclusionLevel = 1.0;
     renderer.disableShade = false;
     renderer.render.entityShadow = true;
 }
 
-// This is where the shaders, buffers, and textures are configured.
 export function configurePipeline(pipeline: PipelineConfig): void {
-    // This creates the main texture; one of the two textures used in this template. It can be accessed via "Sampler2D mainTexture;" in shaders.
-    // However, you are not limited by how many textures can be created.
-    // The most important limitation is you should never read and write to the same texture in the same shader. (Using images avoids this limitation, but this is not covered here.)
-
-    const texSource = pipeline.createTexture("texSource")
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGBA8)
-        .build();
-
     const texVelocity = pipeline.createTexture("texVelocity")
         .width(screenWidth)
         .height(screenHeight)
@@ -32,14 +18,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .format(Format.RGBA16F)
         .build();
 
-    const texFinalPrev = pipeline.createImageTexture("texFinalPrev", "imgFinalPrev")
+    pipeline.createImageTexture("texFinalPrev", "imgFinalPrev")
         .width(screenWidth)
         .height(screenHeight)
         .format(Format.RGBA16F)
         .clear(false)
         .build();
 
-    let ssboScene = pipeline.createBuffer("ssboScene", 8, false);
+    pipeline.createBuffer("ssboScene", 8, false);
     //const sceneSettings = pipeline.createStreamingBuffer("sceneSettings", 8);
 
     const preRender = pipeline.forStage(Stage.PRE_RENDER);
@@ -56,7 +42,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("objects/basic")
         .exportBool("disableFog", false)
         .exportBool("EnableTAA", true)
-        .target(0, texSource)
+        .target(0, texFinal)
         .target(1, texVelocity)
         .compile();
 
@@ -64,17 +50,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("objects/basic")
         .exportBool("disableFog", true)
         .exportBool("EnableTAA", true)
-        .target(0, texSource)
+        .target(0, texFinal)
         .target(1, texVelocity)
         .compile();
 
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
-
-    postRender.createComposite("copyToFinal")
-        .location("post/copyToFinal", "copyToFinal")
-        .target(0, texFinal)
-        .compile();
 
     postRender.createCompute("taa")
         .location("post/taa", "applyTaa")
@@ -96,7 +77,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     postRender.end();
 
-    pipeline.createCombinationPass("post/combination").compile();
+    pipeline.createCombinationPass("post/final").compile();
 }
 
 export function beginFrame(state : WorldState) : void {
