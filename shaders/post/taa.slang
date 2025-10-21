@@ -11,12 +11,14 @@ Sampler2D<float4> texFinalPrev;
 Sampler2D<float2> texVelocity;
 Sampler2D<float> mainDepthTex;
 
-static const uint groupRes = 16;
-static const uint sharedBufferRes = groupRes+2;
-static const uint sharedBufferSize = sharedBufferRes*sharedBufferRes;
-groupshared float3 sharedBuffer[sharedBufferSize];
-
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
+static const uint groupResX = 16;
+static const uint groupResY = 8;
+
+static const uint sharedBufferResX = groupResX+2;
+static const uint sharedBufferResY = groupResY+2;
+static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
+groupshared float3 sharedBuffer[sharedBufferSize];
 
 
 static const float3x3 RGB_TO_YUV = float3x3(
@@ -31,11 +33,6 @@ static const float3x3 YUV_TO_RGB = float3x3(
     1.13983, -0.58060, 0.00000
 );
 
-int getSharedIndex(const in int2 uv) {
-    // TODO: morton index?
-    return uv.y * sharedBufferRes + uv.x;
-}
-
 float2 getReprojectedClipPos(const in float2 texcoord, const in float depthNow, const in float2 velocity) {
     float3 clipPos = float3(texcoord, depthNow) * 2.0 - 1.0;
     float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
@@ -48,6 +45,18 @@ float2 getReprojectedClipPos(const in float2 texcoord, const in float depthNow, 
     return clipPosPrev.xy * 0.5 + 0.5 - velocity;
 }
 
+uint2 getSharedUV(const in uint z) {
+    // return z2xy(uv);
+    return uint2(
+        z % sharedBufferResX,
+        uint(z / float(sharedBufferResX))
+    );
+}
+
+int getSharedIndex(const in int2 uv) {
+    // return xy2z(uv);
+    return uv.y * sharedBufferResX + uv.x;
+}
 
 public void barrier() {
     __target_switch {
@@ -63,22 +72,18 @@ struct ComputeInput {
 };
 
 [[shader("compute")]]
-[numthreads(groupRes,groupRes,1)]
+[numthreads(groupResX, groupResY, 1)]
 void applyTaa(ComputeInput input) {
     uint i_base = input.groupIndex * 2u;
 
     if (i_base < sharedBufferSize) {
-        uint2 uv_base = input.groupPos.xy * groupRes - 1u;
+        uint2 uv_base = input.groupPos.xy * int2(groupResX, groupResY) - 1u;
 
         for (uint i = 0u; i < 2u; i++) {
             uint i_shared = i_base + i;
 
             if (i_shared < sharedBufferSize) {
-                int2 uv_i = int2(
-                    i_shared % sharedBufferRes,
-                    int(i_shared / float(sharedBufferRes))
-                );
-
+                int2 uv_i = getSharedUV(i_shared);
                 float3 color = imgFinal[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
