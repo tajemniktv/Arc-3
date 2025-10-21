@@ -66,14 +66,17 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .compile();
 
     postRender.createComposite("tonemap")
-        .location("post/tonemap", "applyTonemap")
+        .location("post/tonemap", "tonemap")
         .target(0, texFinal)
         .compile();
 
-    // postRender.createComposite("taa-cas")
-    //     .location("post/taa-cas", "sharpenTaa")
-    //     .target(0, finalTexture)
-    //     .compile();
+    postRender.createCompute("sharpen")
+        .location("post/sharpen", "sharpen")
+        .workGroups(
+            Math.ceil(screenWidth / 16),
+            Math.ceil(screenHeight / 16),
+            1)
+        .compile();
 
     postRender.end();
 

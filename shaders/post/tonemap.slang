@@ -55,7 +55,7 @@ float3 tonemap_jodieReinhard(float3 c) {
 }
 
 [[shader("fragment")]]
-float4 applyTonemap(float2 pos : SV_Position) : SV_Target0 { 
+float4 tonemap(float2 pos : SV_Position) : SV_Target0 { 
     float3 color = texFinal[int2(pos)].rgb;
 
     color = pow(color, float3(2.2));
