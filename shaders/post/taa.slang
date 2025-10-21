@@ -1,6 +1,10 @@
 import aperture;
 import lib.common;
 
+extern static const int EFFECT_TAA_MAX_ACCUM = 16;
+static const uint groupResX = 16;
+static const uint groupResY = 8;
+
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;
 
@@ -12,10 +16,6 @@ Sampler2D<float4> texFinalPrev;
 Sampler2D<float2> texVelocity;
 Sampler2D<float> mainDepthTex;
 
-extern static const int EFFECT_TAA_MAX_ACCUM = 16;
-static const uint groupResX = 16;
-static const uint groupResY = 8;
-
 static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
@@ -23,16 +23,14 @@ groupshared float3 sharedBuffer[sharedBufferSize];
 
 
 static const float3x3 RGB_TO_YUV = float3x3(
-    0.29900, -0.14713,  0.61500,
-    0.58700, -0.28886, -0.51499,
-    0.11400,  0.43600, -0.10001
-);
+     0.29900,  0.58700,  0.11400,
+    -0.14713, -0.28886,  0.43600,
+     0.61500, -0.51499, -0.10001);
 
 static const float3x3 YUV_TO_RGB = float3x3(
-    1.00000,  1.00000, 1.00000,
-    0.00000, -0.39465, 2.03211,
-    1.13983, -0.58060, 0.00000
-);
+    1.00000,  0.00000,  1.13983,
+    1.00000, -0.39465, -0.58060,
+    1.00000,  2.03211,  0.00000);
 
 float2 getReprojectedClipPos(const in float2 texcoord, const in float depthNow, const in float2 velocity) {
     float3 clipPos = float3(texcoord, depthNow) * 2.0 - 1.0;
@@ -47,7 +45,6 @@ float2 getReprojectedClipPos(const in float2 texcoord, const in float depthNow, 
 }
 
 uint2 getSharedUV(const in uint z) {
-    // return z2xy(uv);
     return uint2(
         z % sharedBufferResX,
         uint(z / float(sharedBufferResX))
@@ -55,11 +52,10 @@ uint2 getSharedUV(const in uint z) {
 }
 
 int getSharedIndex(const in int2 uv) {
-    // return xy2z(uv);
     return uv.y * sharedBufferResX + uv.x;
 }
 
-public void barrier() {
+public void glsl_barrier() {
     __target_switch {
         case glsl: __intrinsic_asm "barrier()";
     }
@@ -91,7 +87,7 @@ void applyTaa(ComputeInput input) {
         }
     }
 
-    barrier();
+    glsl_barrier();
 
     if (all(input.globalPos.xy < ap.game.screenSize)) {
         float depth = mainDepthTex[input.globalPos.xy].r;
@@ -120,15 +116,16 @@ void applyTaa(ComputeInput input) {
         float3 antialiased = lerp(lastColor.rgb * lastColor.rgb, in0 * in0, rcp(1.0 + mixRate));
         antialiased = sqrt(antialiased);
 
-        // antialiased = mul(RGB_TO_YUV, antialiased);        
-        // in1 = mul(RGB_TO_YUV, in1);
-        // in2 = mul(RGB_TO_YUV, in2);
-        // in3 = mul(RGB_TO_YUV, in3);
-        // in4 = mul(RGB_TO_YUV, in4);
-        // in5 = mul(RGB_TO_YUV, in5);
-        // in6 = mul(RGB_TO_YUV, in6);
-        // in7 = mul(RGB_TO_YUV, in7);
-        // in8 = mul(RGB_TO_YUV, in8);
+        antialiased = mul(RGB_TO_YUV, antialiased);        
+        in0 = mul(RGB_TO_YUV, in0);
+        in1 = mul(RGB_TO_YUV, in1);
+        in2 = mul(RGB_TO_YUV, in2);
+        in3 = mul(RGB_TO_YUV, in3);
+        in4 = mul(RGB_TO_YUV, in4);
+        in5 = mul(RGB_TO_YUV, in5);
+        in6 = mul(RGB_TO_YUV, in6);
+        in7 = mul(RGB_TO_YUV, in7);
+        in8 = mul(RGB_TO_YUV, in8);
         
         float3 minColor = minOf(minOf(in0, in1, in2), in3, in4);
         minColor = minOf(minOf(in5, in6, in7), in8, minColor);
@@ -143,7 +140,7 @@ void applyTaa(ComputeInput input) {
         float clampAmount = dot(diff, diff);
         mixRate *= rcp(1.0 + 0.2*clampAmount);
         
-        // antialiased = mul(YUV_TO_RGB, antialiased);
+        antialiased = mul(YUV_TO_RGB, antialiased);
         
         imgFinal[input.globalPos.xy] = float4(antialiased, 1.0);
         imgFinalPrev[input.globalPos.xy] = float4(antialiased, mixRate + 1.0);

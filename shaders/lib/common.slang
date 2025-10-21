@@ -32,3 +32,24 @@ float3 unproject(const in float4x4 matrix, const in float3 vector) {
     float4 result = mul(matrix, float4(vector, 1.0));
     return result.xyz / result.w;
 }
+
+float luminance(const in float3 color) {
+    static const float3 L = float3(0.2126, 0.7152, 0.0722);
+    return dot(color, L);
+}
+
+float3 LinearToRgb(const in float3 color) {
+    float3 is_high = step(0.00313066844250063, color);
+    float3 higher = 1.055 * pow(color, float3(1.0/2.4)) - 0.055;
+    float3 lower = color * 12.92;
+
+    return lerp(lower, higher, is_high);
+}
+
+float3 RgbToLinear(const in float3 color) {
+    float3 is_high = step(0.0404482362771082, color);
+    float3 higher = pow((color + 0.055) / 1.055, float3(2.4));
+    float3 lower = color / 12.92;
+
+    return lerp(lower, higher, is_high);
+}

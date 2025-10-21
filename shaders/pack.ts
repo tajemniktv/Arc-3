@@ -1,6 +1,7 @@
 import {BufferFlipper} from "./scripts/BufferFlipper";
 
 const ENABLE_TAA = true;
+const ENABLE_BLOOM = true;
 
 
 export function configureRenderer(renderer: RendererConfig): void {
@@ -73,6 +74,10 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     finalFlipper.flip();
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
+
+    if (ENABLE_BLOOM) {
+        // TODO
+    }
 
     if (ENABLE_TAA) {
         postRender.createCompute("taa")

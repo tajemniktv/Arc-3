@@ -1,4 +1,5 @@
 import aperture;
+import lib.common;
 import buffers.scene;
 
 extern static const bool EnableTAA;
@@ -75,9 +76,11 @@ FragmentOutput fragmentMain(VertexOutput input) { // See the comment in gamma.sl
         color = lerp(color, ap.world.fogColor, clamp(mixValue, 0.0, 1.0));
     }
 
+    color.rgb = RgbToLinear(color.rgb);
+    color.rgb *= 3.0;
+
     FragmentOutput output;
     output.color = color;
     output.velocity = float2(0.0);
-
     return output;
 }

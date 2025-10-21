@@ -1,45 +1,21 @@
 import aperture;
 import lib.common;
 
+extern static const float sharpness = 0.5;
+static const uint groupResX = 16;
+static const uint groupResY = 8;
+
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;
 
 Sampler2D<float4> texFinal;
-
-extern static const float sharpness = 0.5;
-static const uint groupResX = 16;
-static const uint groupResY = 8;
 
 static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
 groupshared float3 sharedBuffer[sharedBufferSize];
 
-
-// int MORTON_MASKS[5] = int[](0x55555555, 0x33333333, 0x0F0F0F0F, 0x00FF00FF, 0x0000FFFF);
-
-// int xy2z(const in int2 U) {
-//     int2 I = int2(U);
-//     int n = 8;
-//     for (int i = 3; i >= 0; i--) {
-//         I =  (I | (I << n)) & MORTON_MASKS[i];
-//         n /= 2;
-//     }
-//     return I.x | (I.y << 1);
-// }
-
-// int2 z2xy(const in int z) {
-//     int n = 1;
-//     int2 I = int2(z, z >> 1) & MORTON_MASKS[0];
-//     for (int i=1; i<=4; i++) {
-//         I = (I | (I >>  n)) & MORTON_MASKS[i];
-//         n *= 2;
-//     }
-//     return I;
-// }
-
 uint2 getSharedUV(const in uint z) {
-    // return z2xy(uv);
     return uint2(
         z % sharedBufferResX,
         uint(z / float(sharedBufferResX))
@@ -47,11 +23,10 @@ uint2 getSharedUV(const in uint z) {
 }
 
 int getSharedIndex(const in int2 uv) {
-    // return xy2z(uv);
     return uv.y * sharedBufferResX + uv.x;
 }
 
-public void barrier() {
+public void glsl_barrier() {
     __target_switch {
         case glsl: __intrinsic_asm "barrier()";
     }
@@ -84,7 +59,7 @@ void sharpen(ComputeInput input) {
         }
     }
 
-    barrier();
+    glsl_barrier();
 
     if (all(input.globalPos.xy < ap.game.screenSize)) {
         // Simplified version of "slow" CAS without upscaling or better diagonals
