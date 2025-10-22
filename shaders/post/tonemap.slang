@@ -1,5 +1,4 @@
 import aperture;
-import lib.common;
 
 Sampler2D<float4> texFinal;
 
@@ -33,14 +32,13 @@ float3 tonemap_ACESFit2(const in float3 color) {
 
 
 [[shader("fragment")]]
-float4 tonemap(float2 pos : SV_Position) : SV_Target0 { 
+float4 tonemap(float2 pos : SV_Position) : SV_Target0 {
     float3 color = texFinal[int2(pos)].rgb;
     color = mul(LINEAR_RGB_TO_REC2020, color);
 
     color = tonemap_ACESFit2(color);
 
     color = mul(REC2020_TO_SRGB, color);
-    color = LinearToRgb(color);
 
     return float4(color, 1.0);
 }

@@ -76,7 +76,59 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
     if (ENABLE_BLOOM) {
-        // TODO
+        const screenWidth_half = Math.ceil(screenWidth / 2.0);
+        const screenHeight_half = Math.ceil(screenHeight / 2.0);
+    
+        let maxLod = Math.log2(Math.min(screenWidth, screenHeight));
+        maxLod = Math.floor(maxLod - 2);
+        maxLod = Math.max(Math.min(maxLod, 8), 0);
+    
+        //print(`Bloom enabled with ${maxLod} LODs`);
+    
+        const texBloom = pipeline.createTexture('texBloom')
+            .format(Format.RGB16F)
+            .width(screenWidth_half)
+            .height(screenHeight_half)
+            .mipmap(true)
+            .clear(false)
+            .build();
+    
+        const bloomStage = postRender.subList('Bloom');
+    
+        for (let i = 0; i < maxLod; i++) {
+            bloomStage.createComposite(`bloom-down-${i}`)
+                .location("post/bloom-down", "applyBloomDown")
+                .target(0, texBloom, i)
+                .overrideObject("TEX_SRC", i == 0 ? finalFlipper.getReadTextureName() : 'texBloom')
+                //.exportInt("TEX_SCALE", Math.pow(2, i))
+                //.exportInt("BLOOM_INDEX", i)
+                .exportInt("MIP_INDEX", Math.max(i-1, 0))
+                .compile();
+        }
+    
+        for (let i = maxLod-1; i >= 0; i--) {
+            const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
+                .location('post/bloom-up', "applyBloomUp")
+                .overrideObject("TEX_SRC", finalFlipper.getReadTextureName())
+                //.exportInt("TEX_SCALE", Math.pow(2, i+1))
+                .exportInt("BLOOM_INDEX", i)
+                .exportInt("MIP_INDEX", Math.max(i, 0));
+                
+            if (i == 0) {
+                bloomUpShader.target(0, finalFlipper.getWriteTexture())
+                    .blendFunc(0, Func.ONE, Func.ZERO, Func.ONE, Func.ZERO);
+            }
+            else {
+                bloomUpShader.target(0, texBloom, i-1)
+                    .blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE);
+            }
+
+            bloomUpShader.compile();
+        }
+    
+        bloomStage.end();
+
+        finalFlipper.flip();
     }
 
     if (ENABLE_TAA) {
