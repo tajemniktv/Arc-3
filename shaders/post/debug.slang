@@ -6,10 +6,10 @@ Sampler1D<uint> texHistogram;
 float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
     float4 color = float4(0.0);
 
-    float2 previewCoord = (pos - 8.0) / float2(80.0, 16.0);
+    float2 previewCoord = (pos - 8.0) / float2(256.0, 32.0);
     if (all(saturate(previewCoord) == previewCoord)) {
         uint sampleVal = texHistogram.SampleLevel(previewCoord.x, 0);
-        color.gb = float2(step(previewCoord.y*previewCoord.y, sampleVal / (ap.game.screenSize.x*ap.game.screenSize.y)));
+        color.gb = float2(step(previewCoord.y*previewCoord.y, sampleVal / float(ap.game.screenSize.x*ap.game.screenSize.y)));
         color.ra = float2(0.0, 1.0);
 
         // float shit = saturate(unmix(Scene_PostExposureMin, Scene_PostExposureMax, log2(Scene_AvgExposure)));

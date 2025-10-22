@@ -1,6 +1,5 @@
 import aperture;
 import lib.common;
-import lib.glsl_barrier;
 
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
 static const uint groupResX = 16;
@@ -82,7 +81,7 @@ void applyTaa(ComputeInput input) {
         }
     }
 
-    glsl_barrier();
+    GroupMemoryBarrierWithGroupSync();
 
     if (all(input.globalPos.xy < ap.game.screenSize)) {
         float depth = mainDepthTex[input.globalPos.xy].r;

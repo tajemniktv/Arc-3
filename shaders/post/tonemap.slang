@@ -4,7 +4,7 @@ import lib.common;
 
 extern static const float Scene_PostExposureMin = -4.0;
 extern static const float Scene_PostExposureMax = 34.0;
-extern static const float Post_ExposureOffset = 4.8;
+extern static const float Scene_PostExposureOffset = 4.8;
 
 ConstantBuffer<SceneBuffer> scene;
 
@@ -32,19 +32,6 @@ float3 xyY_to_xyz(float3 xyY) {
 
 float ev_100(const in float luminance, const in float luminance_avg) {
     return luminance / (9.6 * max(luminance_avg, 1.0e-8));
-}
-
-void ApplyAutoExposure(inout float3 rgb, const in float avgLum) {
-	float3 xyY = xyz_to_xyY(mul(RGB_TO_XYZ, rgb));
-
-	//float lp = xyY.z / (9.6 * avgLum + 0.0001);
-    float lp = ev_100(xyY.z, avgLum);
-
-	//const float whitePoint = Scene_PostExposureRange;
-    //xyY.z = reinhard2(lp, whitePoint);
-    xyY.z = lp * exp2(-Post_ExposureOffset);// * 0.08;
-
-	rgb = mul(XYZ_TO_RGB, xyY_to_xyz(xyY));
 }
 
 static const float3x3 REC2020_TO_SRGB = float3x3(
@@ -79,9 +66,17 @@ float3 tonemap_ACESFit2(const in float3 color) {
 float4 tonemap(float2 pos : SV_Position) : SV_Target0 {
     float3 color = texSource[int2(pos)].rgb;
 
-    // TODO: exposure
+    float3 xyY = xyz_to_xyY(mul(RGB_TO_XYZ, color));
+
     float exposureF = clamp(scene.exposure, Scene_PostExposureMin, Scene_PostExposureMax);
-    //ApplyAutoExposure(color, exposureF);
+	//float lp = xyY.z / (9.6 * avgLum + 0.0001);
+    float lp = ev_100(xyY.z, exposureF);
+
+	//const float whitePoint = Scene_PostExposureRange;
+    //xyY.z = reinhard2(lp, whitePoint);
+    xyY.z = lp * exp2(-Scene_PostExposureOffset);// * 0.08;
+
+	color = mul(XYZ_TO_RGB, xyY_to_xyz(xyY));
 
     color = mul(LINEAR_RGB_TO_REC2020, color);
 

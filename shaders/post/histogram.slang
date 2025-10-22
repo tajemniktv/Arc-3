@@ -1,6 +1,5 @@
 import aperture;
 import lib.common;
-import lib.glsl_barrier;
 
 extern static const float Scene_PostExposureMin;
 extern static const float Scene_PostExposureMax;
@@ -37,7 +36,7 @@ struct ComputeInput {
 [numthreads(16, 16, 1)]
 void computeHistogram(ComputeInput input) {
 	histogramShared[input.groupIndex] = 0u;
-	glsl_barrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	int2 uv = int2(input.globalPos.xy);
 	if (all(uv < int2(ap.game.screenSize))) {
@@ -49,11 +48,13 @@ void computeHistogram(ComputeInput input) {
 //		float depthPostHand = textureLod(mainDepthTex, uv, 0).r;
 //		if (depthPostHand < depthPreHand) hdrColor = vec3(0.0);
 
-		uint binIndex = 128;//colorToBin(hdrColor, Scene_PostExposureMin, Exposure_logLumRangeInv);
+		uint binIndex = colorToBin(hdrColor, Scene_PostExposureMin, Exposure_logLumRangeInv);
 		histogramShared[binIndex].increment(MemoryOrder.Relaxed);
 	}
 
-	glsl_barrier();
+	GroupMemoryBarrierWithGroupSync();
 
 	InterlockedAdd(imgHistogram[input.groupIndex], histogramShared[input.groupIndex].load(MemoryOrder.Relaxed));
+	// InterlockedAdd(imgHistogram[input.groupIndex], 10u);
+	//imgHistogram[input.groupIndex] = uint(input.groupIndex / 255.0 * 100.0);
 }

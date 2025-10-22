@@ -1,6 +1,5 @@
 import aperture;
 import lib.common;
-import lib.glsl_barrier;
 
 extern static const float sharpness = 0.5;
 static const uint groupResX = 16;
@@ -54,7 +53,7 @@ void sharpen(ComputeInput input) {
         }
     }
 
-    glsl_barrier();
+    GroupMemoryBarrierWithGroupSync();
 
     if (all(input.globalPos.xy < ap.game.screenSize)) {
         // Simplified version of "slow" CAS without upscaling or better diagonals

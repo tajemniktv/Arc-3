@@ -1,6 +1,5 @@
 import aperture;
 import buffers.scene;
-import lib.glsl_barrier;
 
 extern static const bool DEBUG_HISTOGRAM = false;
 extern static const float Scene_PostExposureMin;
@@ -15,10 +14,6 @@ RWStructuredBuffer<SceneBuffer> scene;
 [[vk::image_format("r32ui")]]
 RWTexture1D<uint> imgHistogram;
 
-// #ifdef DEBUG_EXPOSURE
-// 	layout(r32ui) uniform uimage2D imgHistogram_debug;
-// #endif
-
 groupshared uint histogramShared[256];
 
 
@@ -28,11 +23,7 @@ void computeExposure(uint groupIndex : SV_GroupIndex) {
 	uint countForThisBin = imgHistogram[groupIndex];
 	histogramShared[groupIndex] = countForThisBin * groupIndex;
 
-	glsl_barrier();
-
-	// #ifdef DEBUG_EXPOSURE
-	// 	imageStore(imgHistogram_debug, histogram_uv, uvec4(countForThisBin));
-	// #endif
+	GroupMemoryBarrierWithGroupSync();
 
 	if (!DEBUG_HISTOGRAM) {
 		imgHistogram[groupIndex] = 0u;
@@ -44,7 +35,7 @@ void computeExposure(uint groupIndex : SV_GroupIndex) {
 			histogramShared[groupIndex] += histogramShared[groupIndex + cutoff];
 		}
 
-		glsl_barrier();
+		GroupMemoryBarrierWithGroupSync();
 	}
 
 	if (groupIndex == 0) {

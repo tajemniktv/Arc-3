@@ -5,8 +5,9 @@ const ENABLE_BLOOM = true;
 
 const DEBUG_HISTOGRAM = true;
 
-const Scene_PostExposureMin = -4.0;
-const Scene_PostExposureMax = 6.0;
+const Scene_PostExposureMin = -2.8;
+const Scene_PostExposureMax = 2.0;
+const Scene_PostExposureOffset = 0.0;
 
 
 export function configureRenderer(renderer: RendererConfig): void {
@@ -205,6 +206,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("post/tonemap", "tonemap")
         .target(0, finalFlipper.getWriteTexture())
         .overrideObject("texSource", finalFlipper.getReadTextureName())
+        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
+        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
+        .exportFloat("Scene_PostExposureOffset", Scene_PostExposureOffset)
         .compile();
 
     finalFlipper.flip();
