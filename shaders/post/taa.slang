@@ -1,5 +1,6 @@
 import aperture;
 import lib.common;
+import lib.glsl_barrier;
 
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
 static const uint groupResX = 16;
@@ -11,7 +12,7 @@ RWTexture2D<float4> imgFinal;
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinalPrev;
 
-Sampler2D<float4> texFinal;
+Sampler2D<float4> texSource;
 Sampler2D<float4> texFinalPrev;
 Sampler2D<float2> texVelocity;
 Sampler2D<float> mainDepthTex;
@@ -55,12 +56,6 @@ int getSharedIndex(const in int2 uv) {
     return uv.y * sharedBufferResX + uv.x;
 }
 
-public void glsl_barrier() {
-    __target_switch {
-        case glsl: __intrinsic_asm "barrier()";
-    }
-}
-
 struct ComputeInput {
     uint groupIndex : SV_GroupIndex;
     uint3 groupPos : SV_GroupID;
@@ -81,7 +76,7 @@ void applyTaa(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = texFinal[uv_base + uv_i].rgb;
+                float3 color = texSource[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
         }

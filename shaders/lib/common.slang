@@ -1,3 +1,6 @@
+static const float EPSILON = 1.0e-6;
+
+
 float minOf(float x, float y, float z) {
     return min(x, min(y, z));
 }
@@ -12,6 +15,10 @@ float maxOf(float x, float y, float z) {
 
 float3 maxOf(float3 x, float3 y, float3 z) {
     return max(x, max(y, z));
+}
+
+float sumOf(const in float3 vec) {
+    return vec.x + vec.y + vec.z;
 }
 
 float3 mul3(const in float4x4 matrix, const in float3 vector) {

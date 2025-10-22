@@ -1,11 +1,11 @@
 import aperture;
-import lib.common;
 import buffers.scene;
+import lib.common;
 
 extern static const bool EnableTAA;
 extern static const bool disableFog;
 
-ConstantBuffer<SceneBuffer> ssboScene;
+ConstantBuffer<SceneBuffer> scene;
 
 struct VertexOutput {
     // The value after the colon is known as a "semantic", and denotes a special value used by the graphics pipeline.
@@ -44,7 +44,7 @@ VertexOutput vertexMain(Vertex input) { // If we had any more vertex semantics w
     }
 
     if (EnableTAA) {
-        output.position.xy += 2.0 * ssboScene.taa_jitter * output.position.w;
+        output.position.xy += 2.0 * scene.taa_jitter * output.position.w;
     }
 
     return output;

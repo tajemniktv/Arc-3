@@ -1,5 +1,6 @@
 import aperture;
 import lib.common;
+import lib.glsl_barrier;
 
 extern static const float sharpness = 0.5;
 static const uint groupResX = 16;
@@ -8,7 +9,7 @@ static const uint groupResY = 8;
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;
 
-Sampler2D<float4> texFinal;
+Sampler2D<float4> texSource;
 
 static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
@@ -24,12 +25,6 @@ uint2 getSharedUV(const in uint z) {
 
 int getSharedIndex(const in int2 uv) {
     return uv.y * sharedBufferResX + uv.x;
-}
-
-public void glsl_barrier() {
-    __target_switch {
-        case glsl: __intrinsic_asm "barrier()";
-    }
 }
 
 struct ComputeInput {
@@ -53,7 +48,7 @@ void sharpen(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = texFinal[uv_base + uv_i].rgb;
+                float3 color = texSource[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
         }

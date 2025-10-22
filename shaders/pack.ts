@@ -3,6 +3,8 @@ import {BufferFlipper} from "./scripts/BufferFlipper";
 const ENABLE_TAA = true;
 const ENABLE_BLOOM = true;
 
+const DEBUG_HISTOGRAM = true;
+
 
 export function configureRenderer(renderer: RendererConfig): void {
     renderer.ambientOcclusionLevel = 1.0;
@@ -42,15 +44,47 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
-    pipeline.createBuffer("ssboScene", 8, false);
+    pipeline.createImageTexture('texHistogram', 'imgHistogram')
+        .format(Format.R32UI)
+        .width(256)
+        //.height(1)
+        .clear(false)
+        .build();
+
+    pipeline.createBuffer("scene", 12, false);
     //const sceneSettings = pipeline.createStreamingBuffer("sceneSettings", 8);
+
+
+    const setup = pipeline.forStage(Stage.SCREEN_SETUP);
+
+    setup.createCompute("setup-scene")
+        .location("setup/scene-setup", "setupScene")
+        .workGroups(1, 1, 1)
+        .compile();
+
+    if (!DEBUG_HISTOGRAM) {
+        setup.createCompute('histogram-clear')
+            .location('setup/histogram-clear', "clearHistogram")
+            .workGroups(1, 1, 1)
+            .compile();
+    }
+
+    setup.end();
+
 
     const preRender = pipeline.forStage(Stage.PRE_RENDER);
 
     preRender.createCompute("begin-scene")
-        .location("setup/begin_scene", "beginScene")
+        .location("setup/scene-begin", "beginScene")
         .workGroups(1, 1, 1)
         .compile();
+
+    if (DEBUG_HISTOGRAM) {
+        preRender.createCompute('histogram-clear')
+            .location('setup/histogram-clear', "clearHistogram")
+            .workGroups(1, 1, 1)
+            .compile();
+    }
 
     preRender.end();
 
@@ -74,6 +108,21 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     finalFlipper.flip();
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
+
+    postRender.createCompute('histogram')
+        .location('post/histogram', "computeHistogram")
+        .workGroups(
+            Math.ceil(screenWidth / 16.0),
+            Math.ceil(screenHeight / 16.0),
+            1)
+        .overrideObject('texSource', finalFlipper.getReadTextureName())
+        .compile();
+
+    postRender.createCompute('exposure')
+        .location('post/exposure', "computeExposure")
+        .workGroups(1, 1, 1)
+        .exportBool("DEBUG_HISTOGRAM", DEBUG_HISTOGRAM)
+        .compile();
 
     if (ENABLE_BLOOM) {
         const screenWidth_half = Math.ceil(screenWidth / 2.0);
@@ -138,7 +187,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 8),
                 1)
-            .overrideObject("texFinal", finalFlipper.getReadTextureName())
+            .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
             .compile();
 
@@ -148,7 +197,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     postRender.createComposite("tonemap")
         .location("post/tonemap", "tonemap")
         .target(0, finalFlipper.getWriteTexture())
-        .overrideObject("texFinal", finalFlipper.getReadTextureName())
+        .overrideObject("texSource", finalFlipper.getReadTextureName())
         .compile();
 
     finalFlipper.flip();
@@ -160,8 +209,18 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 8),
                 1)
-            .overrideObject("texFinal", finalFlipper.getReadTextureName())
+            .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
+            .compile();
+        
+        finalFlipper.flip();
+    }
+
+    if (DEBUG_HISTOGRAM) {
+        postRender.createComposite("debug")
+            .location("post/debug", "renderDebugOverlay")
+            .target(0, finalFlipper.getWriteTexture())
+            .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .compile();
         
         finalFlipper.flip();
