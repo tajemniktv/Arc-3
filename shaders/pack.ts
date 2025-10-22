@@ -5,6 +5,9 @@ const ENABLE_BLOOM = true;
 
 const DEBUG_HISTOGRAM = true;
 
+const Scene_PostExposureMin = -4.0;
+const Scene_PostExposureMax = 6.0;
+
 
 export function configureRenderer(renderer: RendererConfig): void {
     renderer.ambientOcclusionLevel = 1.0;
@@ -62,12 +65,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    if (!DEBUG_HISTOGRAM) {
-        setup.createCompute('histogram-clear')
-            .location('setup/histogram-clear', "clearHistogram")
-            .workGroups(1, 1, 1)
-            .compile();
-    }
+    // if (!DEBUG_HISTOGRAM) {
+    //     setup.createCompute('histogram-clear')
+    //         .location('setup/histogram-clear', "clearHistogram")
+    //         .workGroups(1, 1, 1)
+    //         .compile();
+    // }
 
     setup.end();
 
@@ -79,12 +82,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    if (DEBUG_HISTOGRAM) {
-        preRender.createCompute('histogram-clear')
-            .location('setup/histogram-clear', "clearHistogram")
-            .workGroups(1, 1, 1)
-            .compile();
-    }
+    // if (DEBUG_HISTOGRAM) {
+    //     preRender.createCompute('histogram-clear')
+    //         .location('setup/histogram-clear', "clearHistogram")
+    //         .workGroups(1, 1, 1)
+    //         .compile();
+    // }
 
     preRender.end();
 
@@ -109,6 +112,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
+    if (DEBUG_HISTOGRAM) {
+        postRender.createCompute('histogram-clear')
+            .location('setup/histogram-clear', "clearHistogram")
+            .workGroups(1, 1, 1)
+            .compile();
+    }
+
     postRender.createCompute('histogram')
         .location('post/histogram', "computeHistogram")
         .workGroups(
@@ -116,12 +126,16 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenHeight / 16.0),
             1)
         .overrideObject('texSource', finalFlipper.getReadTextureName())
+        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
+        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
 
     postRender.createCompute('exposure')
         .location('post/exposure', "computeExposure")
         .workGroups(1, 1, 1)
         .exportBool("DEBUG_HISTOGRAM", DEBUG_HISTOGRAM)
+        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
+        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
 
     if (ENABLE_BLOOM) {

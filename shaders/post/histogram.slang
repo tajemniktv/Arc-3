@@ -2,8 +2,8 @@ import aperture;
 import lib.common;
 import lib.glsl_barrier;
 
-extern static const float Scene_PostExposureMin = -4.0;
-extern static const float Scene_PostExposureMax = 34.0;
+extern static const float Scene_PostExposureMin;
+extern static const float Scene_PostExposureMax;
 
 static const float Exposure_logLumRange = Scene_PostExposureMax - Scene_PostExposureMin;
 static const float Exposure_logLumRangeInv = rcp(Exposure_logLumRange);
@@ -49,7 +49,7 @@ void computeHistogram(ComputeInput input) {
 //		float depthPostHand = textureLod(mainDepthTex, uv, 0).r;
 //		if (depthPostHand < depthPreHand) hdrColor = vec3(0.0);
 
-		uint binIndex = colorToBin(hdrColor, Scene_PostExposureMin, Exposure_logLumRangeInv);
+		uint binIndex = 128;//colorToBin(hdrColor, Scene_PostExposureMin, Exposure_logLumRangeInv);
 		histogramShared[binIndex].increment(MemoryOrder.Relaxed);
 	}
 

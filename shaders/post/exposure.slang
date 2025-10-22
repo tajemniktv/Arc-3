@@ -3,8 +3,8 @@ import buffers.scene;
 import lib.glsl_barrier;
 
 extern static const bool DEBUG_HISTOGRAM = false;
-extern static const float Scene_PostExposureMin = -4.0;
-extern static const float Scene_PostExposureMax = 34.0;
+extern static const float Scene_PostExposureMin;
+extern static const float Scene_PostExposureMax;
 extern static const float Scene_PostExposureSpeed = 0.8;
 
 static const float Exposure_logLumRange = Scene_PostExposureMax - Scene_PostExposureMin;
