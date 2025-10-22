@@ -65,12 +65,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    // if (!DEBUG_HISTOGRAM) {
-    //     setup.createCompute('histogram-clear')
-    //         .location('setup/histogram-clear', "clearHistogram")
-    //         .workGroups(1, 1, 1)
-    //         .compile();
-    // }
+    if (!DEBUG_HISTOGRAM) {
+        setup.createCompute('histogram-clear')
+            .location('setup/histogram-clear', "clearHistogram")
+            .workGroups(1, 1, 1)
+            .compile();
+    }
 
     setup.end();
 
@@ -81,13 +81,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("setup/scene-begin", "beginScene")
         .workGroups(1, 1, 1)
         .compile();
-
-    // if (DEBUG_HISTOGRAM) {
-    //     preRender.createCompute('histogram-clear')
-    //         .location('setup/histogram-clear', "clearHistogram")
-    //         .workGroups(1, 1, 1)
-    //         .compile();
-    // }
 
     preRender.end();
 
