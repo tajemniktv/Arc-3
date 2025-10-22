@@ -21,6 +21,10 @@ float sumOf(const in float3 vec) {
     return vec.x + vec.y + vec.z;
 }
 
+float unmix(const in float valueMin, const in float valueMax, const in float value) {
+    return (value - valueMin) / (valueMax - valueMin);
+}
+
 float3 mul3(const in float4x4 matrix, const in float3 vector) {
     return mul(matrix, float4(vector, 1.0)).xyz;
     // TODO: transpose translation?

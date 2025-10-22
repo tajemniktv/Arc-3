@@ -77,7 +77,7 @@ FragmentOutput fragmentMain(VertexOutput input) { // See the comment in gamma.sl
     }
 
     color.rgb = RgbToLinear(color.rgb);
-    color.rgb *= 3.0;
+    color.rgb *= 30.0;
 
     FragmentOutput output;
     output.color = color;

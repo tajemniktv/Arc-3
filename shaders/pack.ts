@@ -5,8 +5,8 @@ const ENABLE_BLOOM = true;
 
 const DEBUG_HISTOGRAM = true;
 
-const Scene_PostExposureMin = -2.8;
-const Scene_PostExposureMax = 2.0;
+const Scene_PostExposureMin = -0.8;
+const Scene_PostExposureMax = 2.8;
 const Scene_PostExposureOffset = 0.0;
 
 
@@ -232,6 +232,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location("post/debug", "renderDebugOverlay")
             .target(0, finalFlipper.getWriteTexture())
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
+            .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();
         
         finalFlipper.flip();

@@ -2,9 +2,9 @@ import aperture;
 import buffers.scene;
 import lib.common;
 
-extern static const float Scene_PostExposureMin = -4.0;
-extern static const float Scene_PostExposureMax = 34.0;
-extern static const float Scene_PostExposureOffset = 4.8;
+extern static const float Scene_PostExposureMin;
+extern static const float Scene_PostExposureMax;
+extern static const float Scene_PostExposureOffset;
 
 ConstantBuffer<SceneBuffer> scene;
 
@@ -31,7 +31,8 @@ float3 xyY_to_xyz(float3 xyY) {
 }
 
 float ev_100(const in float luminance, const in float luminance_avg) {
-    return luminance / (9.6 * max(luminance_avg, 1.0e-8));
+    const float ExposureRange = 6.4; // 9.6
+    return luminance / (ExposureRange * max(luminance_avg, 1.0e-8));
 }
 
 static const float3x3 REC2020_TO_SRGB = float3x3(
