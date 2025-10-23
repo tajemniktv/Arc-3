@@ -49,12 +49,12 @@ void computeHistogram(ComputeInput input) {
 //		if (depthPostHand < depthPreHand) hdrColor = vec3(0.0);
 
 		uint binIndex = colorToBin(hdrColor, Scene_PostExposureMin, Exposure_logLumRangeInv);
-		histogramShared[binIndex].increment(MemoryOrder.Relaxed);
+		histogramShared[binIndex].increment();
 	}
 
 	GroupMemoryBarrierWithGroupSync();
 
-	InterlockedAdd(imgHistogram[input.groupIndex], histogramShared[input.groupIndex].load(MemoryOrder.Relaxed));
+	InterlockedAdd(imgHistogram[input.groupIndex], histogramShared[input.groupIndex].load());
 	// InterlockedAdd(imgHistogram[input.groupIndex], 10u);
 	//imgHistogram[input.groupIndex] = uint(input.groupIndex / 255.0 * 100.0);
 }

@@ -1,0 +1,85 @@
+import aperture;
+import buffers.scene;
+import lib.common;
+import lib.sky.common;
+import lib.sky.sample_transmit;
+
+extern static const bool EnableTAA;
+extern static const bool disableFog;
+
+ConstantBuffer<SceneBuffer> scene;
+
+Sampler2D<float3> texSkyTransmit;
+
+struct VertexOutput {
+    float4 position : SV_Position;
+
+    float4 color;
+    float2 uv;
+    float2 light;
+    float3 localPos;
+    float3 normal;
+};
+
+[[shader("vertex")]]
+VertexOutput vertexMain(Vertex input) {
+    VertexOutput output;
+
+    float3 modelPos = input.pos().xyz;
+    float3 viewPos = mul3(input.viewMatrix(), modelPos);
+    output.position = mul(input.projectionMatrix(), float4(viewPos, 1.0));
+    output.localPos = mul3(ap.camera.viewInv, viewPos);
+
+    output.uv = input.uv();
+    output.color = input.color();
+    output.light = input.light();
+
+    if (let normal = input.normal()) {
+        output.normal = mul(input.normalMatrix(), normal);
+        output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
+    }
+
+    if (let overlayColor = input.overlayColor()) {
+        output.color = lerp(output.color, overlayColor, overlayColor.a);
+    }
+
+    if (EnableTAA) {
+        output.position.xy += scene.taa_jitter * (2.0 * output.position.w);
+    }
+
+    return output;
+}
+
+
+struct FragmentOutput {
+    float4 color : SV_Target0;
+    float2 velocity : SV_Target2;
+};
+
+[[shader("fragment")]]
+FragmentOutput fragmentMain(VertexOutput input) {
+    float4 albedo = albedoTex.Sample(input.uv) * input.color;
+    iris_discardIfNeeded(albedo);
+
+    float3 geo_normal = normalize(input.normal);
+    float3 tex_normal = geo_normal;
+
+    float3 lightDir = normalize(ap.celestial.position);
+    // TODO: separate sun/moon direction and color
+    float3 localSunDir = normalize(mul(float3x3(ap.camera.viewInv), lightDir));
+
+    float3 skyPos = getSkyPosition(input.localPos);
+    float3 sunTransmit = sampleSkyTransmit(skyPos, localSunDir);
+
+    float NoLm_sun = max(dot(tex_normal, localSunDir), 0.0);
+    float3 diffuse = NoLm_sun * scene.SunColor * sunTransmit;
+    float3 specular = float3(0.0);
+
+    float4 color = albedo;
+    color.rgb = color.rgb * diffuse + specular;
+
+    FragmentOutput output;
+    output.color = color;
+    output.velocity = 0.0;
+    return output;
+}

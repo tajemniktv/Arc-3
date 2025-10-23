@@ -1,0 +1,3 @@
+struct SettingsBuffer {
+    float SkyFogSeaLevel;
+};

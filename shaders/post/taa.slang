@@ -1,6 +1,7 @@
 import aperture;
 import lib.common;
 
+extern static const float TAA_RejectionStrength = 0.6;
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
 static const uint groupResX = 16;
 static const uint groupResY = 8;
@@ -110,16 +111,16 @@ void applyTaa(ComputeInput input) {
         float3 antialiased = lerp(lastColor.rgb * lastColor.rgb, in0 * in0, rcp(1.0 + mixRate));
         antialiased = sqrt(antialiased);
 
-        antialiased = mul(RGB_TO_YUV, antialiased);        
-        in0 = mul(RGB_TO_YUV, in0);
-        in1 = mul(RGB_TO_YUV, in1);
-        in2 = mul(RGB_TO_YUV, in2);
-        in3 = mul(RGB_TO_YUV, in3);
-        in4 = mul(RGB_TO_YUV, in4);
-        in5 = mul(RGB_TO_YUV, in5);
-        in6 = mul(RGB_TO_YUV, in6);
-        in7 = mul(RGB_TO_YUV, in7);
-        in8 = mul(RGB_TO_YUV, in8);
+        // antialiased = mul(RGB_TO_YUV, antialiased);        
+        // in0 = mul(RGB_TO_YUV, in0);
+        // in1 = mul(RGB_TO_YUV, in1);
+        // in2 = mul(RGB_TO_YUV, in2);
+        // in3 = mul(RGB_TO_YUV, in3);
+        // in4 = mul(RGB_TO_YUV, in4);
+        // in5 = mul(RGB_TO_YUV, in5);
+        // in6 = mul(RGB_TO_YUV, in6);
+        // in7 = mul(RGB_TO_YUV, in7);
+        // in8 = mul(RGB_TO_YUV, in8);
         
         float3 minColor = minOf(minOf(in0, in1, in2), in3, in4);
         minColor = minOf(minOf(in5, in6, in7), in8, minColor);
@@ -132,9 +133,9 @@ void applyTaa(ComputeInput input) {
             
         float3 diff = antialiased - preclamping;
         float clampAmount = dot(diff, diff);
-        mixRate *= rcp(1.0 + 0.2*clampAmount);
+        mixRate *= rcp(1.0 + TAA_RejectionStrength*clampAmount);
         
-        antialiased = mul(YUV_TO_RGB, antialiased);
+        //antialiased = mul(YUV_TO_RGB, antialiased);
         
         imgFinal[input.globalPos.xy] = float4(antialiased, 1.0);
         imgFinalPrev[input.globalPos.xy] = float4(antialiased, mixRate + 1.0);
