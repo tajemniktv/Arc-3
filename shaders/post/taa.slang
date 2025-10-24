@@ -4,7 +4,7 @@ import lib.common;
 extern static const float TAA_RejectionStrength = 0.6;
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
 static const uint groupResX = 16;
-static const uint groupResY = 8;
+static const uint groupResY = 16;
 
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinal;

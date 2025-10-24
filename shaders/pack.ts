@@ -397,7 +397,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location("post/taa", "applyTaa")
             .workGroups(
                 Math.ceil(screenWidth / 16),
-                Math.ceil(screenHeight / 8),
+                Math.ceil(screenHeight / 16),
                 1)
             .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
@@ -419,7 +419,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location("post/sharpen", "sharpen")
             .workGroups(
                 Math.ceil(screenWidth / 16),
-                Math.ceil(screenHeight / 8),
+                Math.ceil(screenHeight / 16),
                 1)
             .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
