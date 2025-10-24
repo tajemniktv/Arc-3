@@ -5,6 +5,7 @@ let TAA_ENABLED : boolean;
 let ENABLE_BLOOM : boolean;
 const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
+const Debug_WhiteWorld = false;
 
 const Scene_PostExposureMin = -0.2;
 const Scene_PostExposureMax = 10.8;
@@ -59,6 +60,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     pipeline.setGlobalExport(pipeline.createExportList()
         .addBool('TAA_Enabled', TAA_ENABLED)
+        .addBool('Debug_WhiteWorld', Debug_WhiteWorld)
         .build());
 
     pipeline.createBuffer("scene", 96, false);
@@ -326,9 +328,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportFloat("Scene_PostExposureOffset", Scene_PostExposureOffset)
         .compile();
 
-    finalFlipper.flip();
-
     if (ENABLE_BLOOM) {
+        finalFlipper.flip();
+
         const screenWidth_half = Math.ceil(screenWidth / 2.0);
         const screenHeight_half = Math.ceil(screenHeight / 2.0);
     
@@ -380,13 +382,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         }
     
         bloomStage.end();
-
-        finalFlipper.flip();
     }
 
     if (TAA_ENABLED) {
         texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
         imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
+
+        finalFlipper.flip();
 
         postRender.createCompute("taa")
             .location("post/taa", "applyTaa")
@@ -397,9 +399,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
             .compile();
-
-        finalFlipper.flip();
     }
+
+    finalFlipper.flip();
 
     postRender.createComposite("tonemap")
         .location("post/tonemap", "applyTonemap")
@@ -407,9 +409,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .overrideObject("texSource", finalFlipper.getReadTextureName())
         .compile();
 
-    finalFlipper.flip();
-
     if (TAA_ENABLED) {
+        finalFlipper.flip();
+
         postRender.createCompute("sharpen")
             .location("post/sharpen", "sharpen")
             .workGroups(
@@ -419,8 +421,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .overrideObject("texSource", finalFlipper.getReadTextureName())
             .overrideObject("imgFinal", finalFlipper.getWriteImageName())
             .compile();
-        
-        finalFlipper.flip();
     }
 
     if (DEBUG_MATERIAL >= 0 || DEBUG_HISTOGRAM) {
@@ -433,11 +433,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
             .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();
-        
-        finalFlipper.flip();
     }
 
     postRender.end();
+
+    finalFlipper.flip();
 
     pipeline.createCombinationPass("post/final")
         .overrideObject("texFinal", finalFlipper.getReadTextureName())

@@ -2,8 +2,8 @@ import aperture;
 import buffers.scene;
 import lib.common;
 
-extern static const bool TAA_Enabled;
 extern static const bool disableFog;
+extern static const bool TAA_Enabled;
 
 ConstantBuffer<SceneBuffer> scene;
 

@@ -5,8 +5,9 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 
-extern static const bool TAA_Enabled;
 extern static const bool disableFog;
+extern static const bool TAA_Enabled;
+extern static const bool Debug_WhiteWorld;
 
 ConstantBuffer<SceneBuffer> scene;
 
@@ -66,6 +67,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
     iris_discardIfNeeded(albedo);
 
     albedo.rgb = RgbToLinear(albedo.rgb);
+    if (Debug_WhiteWorld) albedo.rgb = 0.85;
 
     float3 geo_normal = normalize(input.normal);
     float3 tex_normal = geo_normal;

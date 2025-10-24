@@ -4,6 +4,8 @@ import lib.common;
 import lib.sky.common;
 import lib.sky.sample_view;
 
+extern static const bool Debug_WhiteWorld;
+
 ConstantBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texAlbedoGB;
@@ -41,6 +43,7 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         float3 specular = texSpecular[uv];
 
         albedo.rgb = RgbToLinear(albedo.rgb);
+        if (Debug_WhiteWorld) albedo.rgb = 0.85;
 
         color = albedo.rgb * (diffuse + ambient) + specular;
     }
