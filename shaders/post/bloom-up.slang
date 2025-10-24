@@ -6,7 +6,7 @@ extern static const uint BLOOM_INDEX;
 extern static const uint MIP_INDEX;
 
 Sampler2D<float3> texBloom;
-Sampler2D<float3> TEX_SRC;
+Sampler2D<float3> texSource;
 
 float3 sample_src(const in float2 uv) {
     return texBloom.SampleLevel(uv, MIP_INDEX);
@@ -32,14 +32,14 @@ float3 applyBloomUp(float2 pos : SV_Position) : SV_Target0 {
     float3 h = sample_src(fma(srcPixelSize, float2( 0.0, -1.0), uv));
     float3 i = sample_src(fma(srcPixelSize, float2(+1.0, -1.0), uv));
 
-    float3 outColor =   e * 0.2500;
-    outColor += (b+d+f+h) * 0.1250;
-    outColor += (a+c+g+i) * 0.0625;
+    float3 color =   e * 0.2500;
+    color += (b+d+f+h) * 0.1250;
+    color += (a+c+g+i) * 0.0625;
 
     if (BLOOM_INDEX == 0u) {
-        outColor = outColor * Effect_Bloom_Strength + TEX_SRC[int2(pos)];
-        outColor = clamp(outColor, 0.0, 65000.0);
+        color = color * Effect_Bloom_Strength + texSource[int2(pos)];
     }
 
-    return outColor;
+    // color = clamp(color, 0.0, 65000.0);
+    return color;
 }

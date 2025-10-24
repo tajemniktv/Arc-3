@@ -3,17 +3,17 @@ import lib.common;
 
 extern static const uint MIP_INDEX;
 
-Sampler2D<float3> TEX_SRC;
+Sampler2D<float3> texSource;
 
 
 float3 sample_src(const in float2 uv) {
-    return TEX_SRC.SampleLevel(uv, MIP_INDEX);
+    return texSource.SampleLevel(uv, MIP_INDEX);
 }
 
 [[shader("fragment")]]
 float3 applyBloomDown(float2 pos : SV_Position) : SV_Target0 {
     uint3 texSrc_size;
-    TEX_SRC.GetDimensions(MIP_INDEX, texSrc_size.x, texSrc_size.y, texSrc_size.z);
+    texSource.GetDimensions(MIP_INDEX, texSrc_size.x, texSrc_size.y, texSrc_size.z);
     float2 srcPixelSize = rcp(texSrc_size.xy);
 
     float2 uv = 2.0 * pos * srcPixelSize;
@@ -35,10 +35,11 @@ float3 applyBloomDown(float2 pos : SV_Position) : SV_Target0 {
     float3 l = sample_src(fma(srcPixelSize, float2(-1.0, -1.0), uv));
     float3 m = sample_src(fma(srcPixelSize, float2(+1.0, -1.0), uv));
 
-    float3 outColor =   e * 0.12500;
-    outColor += (a+c+g+i) * 0.03125;
-    outColor += (b+d+f+h) * 0.06250;
-    outColor += (j+k+l+m) * 0.12500;
+    float3 color =   e * 0.12500;
+    color += (a+c+g+i) * 0.03125;
+    color += (b+d+f+h) * 0.06250;
+    color += (j+k+l+m) * 0.12500;
 
-    return clamp(outColor, 0.0, 65000.0);
+    // color = clamp(color, 0.0, 65000.0);
+    return color;
 }

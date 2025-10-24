@@ -28,7 +28,7 @@ float3 xyz_to_xyY(float3 xyz) {
 
 float3 xyY_to_xyz(float3 xyY) {
     float2 xz = float2(xyY.x, 1.0 - xyY.x - xyY.y);
-    return float3(xyY.z * xz.xy / xyY.y, xyY.z).xzy;
+    return float3(xyY.z * xz.xy / max(xyY.y, EPSILON), xyY.z).xzy;
 }
 
 float ev_100(const in float luminance, const in float luminance_avg) {

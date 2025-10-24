@@ -354,7 +354,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             bloomStage.createComposite(`bloom-down-${i}`)
                 .location("post/bloom-down", "applyBloomDown")
                 .target(0, texBloom, i)
-                .overrideObject("TEX_SRC", i == 0 ? finalFlipper.getReadTextureName() : 'texBloom')
+                .overrideObject("texSource", i == 0 ? finalFlipper.getReadTextureName() : 'texBloom')
                 //.exportInt("TEX_SCALE", Math.pow(2, i))
                 //.exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i-1, 0))
@@ -364,7 +364,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         for (let i = maxLod-1; i >= 0; i--) {
             const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
                 .location('post/bloom-up', "applyBloomUp")
-                .overrideObject("TEX_SRC", finalFlipper.getReadTextureName())
+                .overrideObject("texSource", finalFlipper.getReadTextureName())
                 //.exportInt("TEX_SCALE", Math.pow(2, i+1))
                 .exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i, 0));
