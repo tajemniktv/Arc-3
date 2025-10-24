@@ -7,7 +7,7 @@ const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
 const Debug_WhiteWorld = false;
 
-const Scene_PostExposureMin = -0.2;
+const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
 
@@ -277,6 +277,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("deferred/lighting-sky", "lightingSky")
         .target(0, texDiffuse)
         .target(1, texSpecular)
+        .compile();
+
+    stagePostOpaque.createComposite("deferred-lighting-block")
+        .location("deferred/lighting-block", "lightingBlock")
+        .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
+        .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
         .compile();
 
     stagePostOpaque.createComposite("deferred-lighting-final")

@@ -1,6 +1,7 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.sampling.lmcoord;
 
 extern static const bool disableFog;
 extern static const bool TAA_Enabled;
@@ -26,8 +27,10 @@ VertexOutput vertexMain(Vertex input) {
     output.position = mul(input.projectionMatrix(), mul(input.viewMatrix(), modelPos));
     output.uv = input.uv();
     output.color = input.color();
-    output.light = input.light();
     output.occlusion = input.ao();
+
+    output.light = LightMapNorm(input.light());
+    output.light = output.light * output.light;
 
     output.normal = 0.0;
     if (let normal = input.normal()) {

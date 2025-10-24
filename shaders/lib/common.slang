@@ -1,9 +1,10 @@
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;
 
-static const int DEBUG_MAT_ALBEDO = 0;
-static const int DEBUG_MAT_NORMAL_GEO = 1;
-static const int DEBUG_MAT_NORMAL_TEX = 2;
+static const int DEBUG_GB_ALBEDO = 0;
+static const int DEBUG_GB_NORMAL_GEO = 1;
+static const int DEBUG_GB_NORMAL_TEX = 2;
+static const int DEBUG_GB_LMCOORD = 3;
 
 
 float minOf(float x, float y, float z) {
@@ -27,6 +28,10 @@ float sumOf(const in float3 vec) {
 }
 
 float unmix(const in float valueMin, const in float valueMax, const in float value) {
+    return (value - valueMin) / (valueMax - valueMin);
+}
+
+float2 unmix(const in float2 valueMin, const in float2 valueMax, const in float2 value) {
     return (value - valueMin) / (valueMax - valueMin);
 }
 

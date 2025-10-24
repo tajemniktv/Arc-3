@@ -71,7 +71,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float4 light = unpackUnorm4x8ToFloat(mat_light.g);
     //float2 lmcoord = light.rg;
-    float lmcoord_y = light.g*light.g*light.g;
+    float lmcoord_y = light.g*light.g;
     float occlusion = light.b;
     
     int shadowCascade;

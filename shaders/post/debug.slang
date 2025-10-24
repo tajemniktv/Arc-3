@@ -23,14 +23,17 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
         color.a = 1.0;
 
         switch (DEBUG_MATERIAL) {
-            case DEBUG_MAT_ALBEDO:
+            case DEBUG_GB_ALBEDO:
                 color.rgb = texAlbedoGB[uv].rgb;
                 break;
-            case DEBUG_MAT_NORMAL_GEO:
+            case DEBUG_GB_NORMAL_GEO:
                 color.rgb = unpackUnorm4x8ToFloat(texNormalGB[uv].r).xyz;
                 break;
-            case DEBUG_MAT_NORMAL_TEX:
+            case DEBUG_GB_NORMAL_TEX:
                 color.rgb = unpackUnorm4x8ToFloat(texNormalGB[uv].g).xyz;
+                break;
+            case DEBUG_GB_LMCOORD:
+                color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).rrg;
                 break;
         }
     }
