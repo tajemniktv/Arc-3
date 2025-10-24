@@ -50,16 +50,16 @@ float mat_emission(const in float4 specularData) {
 
 [[shader("fragment")]]
 float fragmentMain(VertexOutput input) : SV_Depth {
-    //float LOD = 0.0;//albedoTex.textureQueryLod(input.uv).y;
+    float LOD = 0.0;//albedoTex.CalculateLevelOfDetail(input.uv);
 
     float finalDist = length(input.modelPos);
     float fragDepth = (finalDist - ap.lights.nearPlane) / (ap.lights.farPlane - ap.lights.nearPlane);
 
-    float alpha = albedoTex.SampleLevel(input.uv, 0).a;
+    float alpha = albedoTex.SampleLevel(input.uv, LOD).a;
 
     if (LIGHTING_SHADOW_EMISSION_MASK) {
         if (all(clamp(input.modelPos, -0.5, 0.5) == input.modelPos)) {
-            float4 specularData = specularTex.SampleLevel(input.uv, 0);
+            float4 specularData = specularTex.SampleLevel(input.uv, LOD);
             float emission = mat_emission(specularData);
             if (emission > 0.0) alpha = 0.0;
         }

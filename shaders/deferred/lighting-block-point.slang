@@ -12,7 +12,7 @@ static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
 groupshared uint sharedLightList[256];
-groupshared Atomic<uint> depthMin, depthMax;
+groupshared Atomic<uint> depthMinInt, depthMaxInt;
 groupshared Atomic<uint> counter;
 
 ConstantBuffer<SceneBuffer> scene;
@@ -30,14 +30,6 @@ Sampler2D<float> mainDepthTex;
 SamplerCubeArrayShadow pointLightFiltered;
 
 
-float sample_PointLightShadow(const in float3 sampleDir, const in float sampleDist, const in float lightRange, in float bias, const in uint index) {
-    //if (sampleDist >= lightRange) return 0.0;
-
-    float depth = (sampleDist - bias - ap.lights.nearPlane) / (ap.lights.farPlane - ap.lights.nearPlane);
-    return pointLightFiltered.SampleCmp(float4(sampleDir, index), depth).r;
-}
-
-
 struct ComputeInput {
     uint groupIndex : SV_GroupIndex;
     uint3 groupPos : SV_GroupID;
@@ -49,29 +41,51 @@ struct ComputeInput {
 [numthreads(16, 16, 1)]
 void applyPointLights(ComputeInput input) {
     if (input.groupIndex == 0) {
-        depthMin = uint.maxValue;
-        depthMax = uint.minValue;
+        depthMinInt = uint.maxValue;
+        depthMaxInt = uint.minValue;
         counter = 0;
     }
 
     GroupMemoryBarrierWithGroupSync();
 
     float depth = mainDepthTex[input.globalPos.xy];
-    depthMin.min(uint(depth * uint.maxValue));
-    depthMax.max(uint(depth * uint.maxValue));
+    uint depthInt = uint(depth * uint.maxValue);
+    // TODO: linearize depth?
+    depthMinInt.min(depthInt);
+    depthMaxInt.max(depthInt);
 
     GroupMemoryBarrierWithGroupSync();
 
-    // TODO: pre-compute bounds?
+    float depthMin = depthMinInt.load() / float(uint.maxValue);
+    float depthMax = depthMaxInt.load() / float(uint.maxValue);
 
     if (input.groupIndex < ap.lights.count) {
         PointLight light = ap.lights[input.groupIndex];
-        // TODO: collision test and set mask
-        bool hit = light.block >= 0;
 
-        if (hit) {
-            uint index = counter.increment();
-            sharedLightList[index] = input.groupIndex;
+        if (light.block >= 0) {
+            uint lightRange = ap.blocks[light.block].emission;
+
+            // compute screen-space bounds
+            float3 lightViewPos = mul3(ap.camera.view, light.position);
+            //float3 lightClipPos = unproject(ap.camera.projection, lightViewPos);
+
+            float3 lightViewPosMin = lightViewPos - float2(lightRange, -lightRange).xxy;
+            float3 lightClipPosMin = unproject(ap.camera.projection, lightViewPosMin);
+            lightClipPosMin = lightClipPosMin * 0.5 + 0.5;
+
+            float3 lightViewPosMax = lightViewPos + float2(lightRange, -lightRange).xxy;
+            float3 lightClipPosMax = unproject(ap.camera.projection, lightViewPosMax);
+            lightClipPosMax = lightClipPosMax * 0.5 + 0.5;
+            
+            // TODO: collision test and set mask
+            bool hit = true;
+            // if (lightClipPosMax.z < depthMin) hit = false;
+            // if (lightClipPosMin.z > depthMax) hit = false;
+
+            if (hit) {
+                uint index = counter.increment();
+                sharedLightList[index] = input.groupIndex;
+            }
         }
     }
 
@@ -84,10 +98,16 @@ void applyPointLights(ComputeInput input) {
     float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos);
 
-    uint normals_g = texNormalGB[input.globalPos.xy].g;
-    float3 tex_normal = unpackUnorm4x8ToFloat(normals_g).xyz * 2.0 - 1.0;
-    bool hasNormal = any(tex_normal > -1.0);
-    if (hasNormal) tex_normal = normalize(tex_normal);
+    uint2 normals = texNormalGB[input.globalPos.xy];
+    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
+    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
+
+    // bool hasNormal = any(tex_normal > -1.0);
+    // if (hasNormal) tex_normal = normalize(tex_normal);
+
+    const float offsetBias = 0.02;
+    const float normalBias = 0.16;
+    float3 localSamplePos = normalBias * geo_normal + localPos;
 
     float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
     float3 specular = imgSpecular[input.globalPos.xy].rgb;
@@ -98,7 +118,7 @@ void applyPointLights(ComputeInput input) {
         PointLight light = ap.lights[lightIndex];
         BlockData block = ap.blocks[light.block];
 
-        float3 lightOffset = light.position - localPos;
+        float3 lightOffset = light.position - localSamplePos;
         uint lightRange = block.emission;
 
         float lightDist = length(lightOffset);
@@ -110,8 +130,8 @@ void applyPointLights(ComputeInput input) {
         float3 lightColor = RgbToLinear(block.lightColor.rgb);
         float NoLm = max(dot(tex_normal, lightDir), 0.0);
 
-        const float bias = 0.0;
-        float shadow = sample_PointLightShadow(-lightDir, lightDist, lightRange, bias, lightIndex);
+        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
+        float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
 
         diffuse += NoLm * lightAtt * shadow * BLOCK_LUX * lightColor;
         //specular += 0.0;

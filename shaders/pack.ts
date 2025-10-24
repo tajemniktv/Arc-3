@@ -40,7 +40,7 @@ export function configureRenderer(config: RendererConfig): void {
     config.shadow.distance = 200;
 
     config.pointLight.maxCount = 256;
-    config.pointLight.resolution = 128;
+    config.pointLight.resolution = 256;
     config.pointLight.cacheRealTimeTerrain = false;
     config.pointLight.nearPlane = 0.1;
     config.pointLight.farPlane = 16.0;

@@ -25,14 +25,6 @@ FragmentOutput lightingBlock(float2 pos : SV_Position) {
     FragmentOutput output;
     uint2 uv = uint2(pos);
 
-    float depth = mainDepthTex[uv];
-    float2 texcoord = pos / ap.game.screenSize;
-    if (TAA_Enabled) texcoord -= scene.taa_jitter;
-
-    float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-    float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
-    float3 localPos = mul3(ap.camera.viewInv, viewPos);
-
     //float4 albedo = texAlbedoGB[uv];
     uint2 normals = texNormalGB[uv];
     uint2 mat_light = texMatLightGB[uv];
@@ -46,10 +38,22 @@ FragmentOutput lightingBlock(float2 pos : SV_Position) {
     float lmcoord_x = light.r * light.r;
     //float occlusion = light.b;
 
-    if (!(PointLight_Enabled && shadowPoint_isInBounds(localPos))) {
-        output.diffuse = lmcoord_x / PI * BLOCK_LUX;
-        output.specular = 0.0;
+    if (PointLight_Enabled) {
+        float depth = mainDepthTex[uv];
+        float2 texcoord = pos / ap.game.screenSize;
+        if (TAA_Enabled) texcoord -= scene.taa_jitter;
+
+        float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
+        float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
+        float3 localPos = mul3(ap.camera.viewInv, viewPos);
+
+        if (shadowPoint_isInBounds(localPos)) {
+            lmcoord_x = 0.0;
+        }
     }
-    
+
+    output.diffuse = lmcoord_x / PI * BLOCK_LUX;
+    output.specular = 0.0;
+
     return output;
 }
