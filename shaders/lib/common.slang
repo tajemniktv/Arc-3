@@ -15,6 +15,10 @@ float3 minOf(float3 x, float3 y, float3 z) {
     return min(x, min(y, z));
 }
 
+// T minOf<T>(const in T x, const in T y, const in T z) where T: IComparable {
+//     return min(x, min(y, z));
+// }
+
 float maxOf(float x, float y, float z) {
     return max(x, max(y, z));
 }
@@ -23,15 +27,15 @@ float3 maxOf(float3 x, float3 y, float3 z) {
     return max(x, max(y, z));
 }
 
-float sumOf(const in float3 vec) {
+// T maxOf<T>(const in T x, const in T y, const in T z) where T: IArithmetic {
+//     return max(x, max(y, z));
+// }
+
+T sumOf<T>(const in vector<T, 3> vec) where T: IArithmetic {
     return vec.x + vec.y + vec.z;
 }
 
-float unmix(const in float valueMin, const in float valueMax, const in float value) {
-    return (value - valueMin) / (valueMax - valueMin);
-}
-
-float2 unmix(const in float2 valueMin, const in float2 valueMax, const in float2 value) {
+T unmix<T>(const in T valueMin, const in T valueMax, const in T value) where T: IFloat {
     return (value - valueMin) / (valueMax - valueMin);
 }
 

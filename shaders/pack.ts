@@ -255,12 +255,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const shaderBasicOpaque = pipeline.createObjectShader("basic-opaque", Usage.BASIC)
         .location("objects/opaque")
         .exportBool("disableFog", false)
-        .target(0, texAlbedoGB)
-        .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-        .target(1, texNormalGB)
-        .blendOff(1)
-        .target(2, texMatLightGB)
-        .blendOff(2);
+        .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+        .target(1, texNormalGB).blendOff(1)
+        .target(2, texMatLightGB).blendOff(2);
     if (TAA_ENABLED) shaderBasicOpaque.target(3, texVelocity).blendOff(3);
     shaderBasicOpaque.compile();
 
