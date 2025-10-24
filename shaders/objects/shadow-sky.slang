@@ -4,7 +4,6 @@ import lib.common;
 
 struct VertexOutput {
     float4 position : SV_Position;
-    // int currentCascade : SV_InstanceID;
 
     float4 color;
     float2 uv;
@@ -23,17 +22,13 @@ VertexOutput vertexMain(Vertex input) {
     if (let value = input.blockId()) output.blockId = value;
     //}
 
-    float3 shadowViewPos = mul3(input.viewMatrix(), input.pos().xyz);
-
+    float3 modelPos = input.pos().xyz;
+    float3 shadowViewPos = mul3(input.viewMatrix(), modelPos);
     output.position = mul(input.projectionMatrix(), float4(shadowViewPos, 1.0));
 
     if (output.blockId >= 0 && ap.blocks[output.blockId].isFluid) {
         output.color = 1.0;
     }
-
-    // if (IS_TERRAIN_VOXEL || IS_TERRAIN_BLOCKFACE || IS_TERRAIN_ENTITY_QUADS) {
-    //     output.currentCascade = input.currentInstance();
-    // }
 
     return output;
 }

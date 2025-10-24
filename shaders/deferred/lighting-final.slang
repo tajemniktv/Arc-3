@@ -16,8 +16,6 @@ Sampler2D<float> mainDepthTex;
 [[shader("fragment")]]
 float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
     uint2 uv = uint2(pos);
-    float4 albedo = texAlbedoGB[uv];
-
     float depth = mainDepthTex[uv];
 
     float3 color;
@@ -38,8 +36,11 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         // float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
         
         float3 ambient = 0.02;
+        float4 albedo = texAlbedoGB[uv];
         float3 diffuse = texDiffuse[uv];
         float3 specular = texSpecular[uv];
+
+        albedo.rgb = RgbToLinear(albedo.rgb);
 
         color = albedo.rgb * (diffuse + ambient) + specular;
     }

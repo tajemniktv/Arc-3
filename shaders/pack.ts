@@ -3,10 +3,11 @@ import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 
 const ENABLE_TAA = true;
 const ENABLE_BLOOM = false;
+const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
 
-const Scene_PostExposureMin = -0.8;
-const Scene_PostExposureMax = 2.8;
+const Scene_PostExposureMin = -2.8;
+const Scene_PostExposureMax = 1.8;
 const Scene_PostExposureOffset = 0.0;
 
 let texFinalPrevA : BuiltTexture | undefined;
@@ -233,9 +234,10 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     pipeline.createObjectShader("shadow", Usage.SHADOW)
-        .location('objects/shadow-sky')
+        .location('objects/shadow_sky')
         .target(0, texShadowColor)
-        .blendOff(0);
+        .blendOff(0)
+        .compile();
     
     discardShader("sky-discard", Usage.SKYBOX);
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
@@ -413,11 +415,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         finalFlipper.flip();
     }
 
-    if (DEBUG_HISTOGRAM) {
+    if (DEBUG_MATERIAL >= 0 || DEBUG_HISTOGRAM) {
         postRender.createComposite("debug")
             .location("post/debug", "renderDebugOverlay")
             .target(0, finalFlipper.getWriteTexture())
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .exportInt('DEBUG_MATERIAL', DEBUG_MATERIAL)
+            .exportBool('DEBUG_HISTOGRAM', DEBUG_HISTOGRAM)
             .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
             .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();

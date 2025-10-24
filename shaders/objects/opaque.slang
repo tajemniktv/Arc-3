@@ -14,6 +14,7 @@ struct VertexOutput {
     float2 uv;
     float2 light;
     float3 normal;
+    float occlusion;
 };
 
 [[shader("vertex")]]
@@ -26,7 +27,9 @@ VertexOutput vertexMain(Vertex input) {
     output.uv = input.uv();
     output.color = input.color();
     output.light = input.light();
+    output.occlusion = input.ao();
 
+    output.normal = 0.0;
     if (let normal = input.normal()) {
         output.normal = mul(input.normalMatrix(), normal);
         output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
@@ -58,7 +61,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
 
     float3 tex_normal = normalize(input.normal);
 
-    float occlusion = 1.0;//input.ao();
+    float occlusion = input.occlusion;
     float emission = 0.0;//?
 
     FragmentOutput output;
