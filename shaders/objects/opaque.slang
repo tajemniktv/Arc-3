@@ -47,7 +47,8 @@ VertexOutput vertexMain(Vertex input) {
 struct FragmentOutput {
     float4 albedo : SV_Target0;
     uint2 normals : SV_Target1;
-    float2 velocity : SV_Target2;
+    uint2 mat_lit : SV_Target2;
+    float2 velocity : SV_Target3;
 };
 
 [[shader("fragment")]]
@@ -57,10 +58,15 @@ FragmentOutput fragmentMain(VertexOutput input) {
 
     float3 tex_normal = normalize(input.normal);
 
+    float occlusion = 1.0;//input.ao();
+    float emission = 0.0;//?
+
     FragmentOutput output;
     output.albedo = color;
     output.normals.r = packUnorm4x8(float4(input.normal * 0.5 + 0.5, 0.0));
     output.normals.g = packUnorm4x8(float4(tex_normal * 0.5 + 0.5, 0.0));
+    output.mat_lit.r = packUnorm4x8(float4(0.0));
+    output.mat_lit.g = packUnorm4x8(float4(input.light, occlusion, emission));
     output.velocity = 0.0;
     return output;
 }

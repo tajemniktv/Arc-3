@@ -5,12 +5,37 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 
+export static const uint SHADOW_CASCADE_COUNT = 4;
+
 ConstantBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
+Sampler2D<uint2> texMatLightGB;
 Sampler2D<float> mainDepthTex;
+Sampler2DArrayShadow shadowMapFiltered;
 
+
+void GetShadowProjection(const in float3 shadowViewPos, out int cascadeIndex, out float3 shadowPos) {
+    cascadeIndex = -1;
+    for (int i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+        shadowPos = mul3(ap.celestial.projection[i], shadowViewPos).xyz;
+
+        const float3 cascadePadding = float3(EPSILON, EPSILON, 0.0);
+
+        if (all(clamp(shadowPos, -1.0 + cascadePadding, 1.0 - cascadePadding) == shadowPos)) {
+            cascadeIndex = i;
+            break;
+        }
+    }
+}
+
+float SampleShadow(in float3 shadowPos, const in int shadowCascade) {
+    if (any(saturate(shadowPos) != shadowPos)) return 1.0;
+
+    float3 shadowCoord = float3(shadowPos.xy, shadowCascade);
+    return shadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z).r;
+}
 
 struct FragmentOutput {
     float3 diffuse : SV_Target0;
@@ -30,10 +55,24 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     //float4 albedo = texAlbedoGB[uv];
     uint2 normals = texNormalGB[uv];
+    uint2 mat_light = texMatLightGB[uv];
+
     //float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
     float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
-    float2 lmcoord = 1.0; // TODO
+
+    float4 light = unpackUnorm4x8ToFloat(mat_light.g);
+    //float2 lmcoord = light.rg;
+    float lmcoord_y = light.g*light.g*light.g;
     
+    int shadowCascade;
+    float3 shadowPos;
+    float3 shadowViewPos = mul3(ap.celestial.view, localPos);
+    GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
+
+    float shadow = 1.0;
+    if (shadowCascade >= 0)
+        shadow = SampleShadow(shadowPos, shadowCascade);
+
     float3 skyPos = getSkyPosition(localPos);
 
     float3 sunTransmit = sampleSkyTransmit(skyPos, scene.SunLocalDir);
@@ -45,9 +84,9 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 lightMoon = NoLm_moon * moonTransmit * scene.MoonColor;
 
     //float3 viewLocalDir = normalize(localPos);
-    float3 ambient = sampleSkyIrradiance(tex_normal, lmcoord.y);
+    float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y;
 
-    output.diffuse = (lightSun + lightMoon) / PI + ambient;
+    output.diffuse = (lightSun + lightMoon) / PI * shadow + ambient;
     output.specular = 0.0;
 
     return output;

@@ -16,12 +16,25 @@ let imgFinalPrevRef : ActiveTextureReference | undefined;
 let settings : BuiltStreamingBuffer | undefined;
 
 
-export function configureRenderer(renderer: RendererConfig): void {
-    renderer.ambientOcclusionLevel = 1.0;
-    renderer.render.entityShadow = false;
-    renderer.render.clouds = false;
-    renderer.mergedHandDepth = true;
-    renderer.disableShade = true;
+export function configureRenderer(config: RendererConfig): void {
+    config.sunPathRotation = 20;
+    config.ambientOcclusionLevel = 0;
+    config.mergedHandDepth = true;
+    config.disableShade = true;
+
+    config.render.waterOverlay = false;
+    config.render.entityShadow = false;
+    config.render.vignette = false;
+    config.render.horizon = false;
+    config.render.clouds = false;
+    config.render.stars = false;
+    config.render.moon = false;
+    config.render.sun = false;
+
+    config.shadow.enabled = true;
+    config.shadow.cascades = 4;
+    config.shadow.resolution = 1024;
+    config.shadow.distance = 200;
 }
 
 export function configurePipeline(pipeline: PipelineConfig): void {
@@ -94,11 +107,25 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
+    const texMatLightGB = pipeline.createTexture('texMatLightGB')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RG32UI)
+        .clearColor(0, 0, 0, 0)
+        .build();
+
+    const texShadowColor = pipeline.createArrayTexture('texShadowColor')
+        .format(Format.RGBA8)
+        .width(renderConfig.shadow.resolution)
+        .height(renderConfig.shadow.resolution)
+        .clearColor(0, 0, 0, 0)
+        .build();
+
     let texSkyTransmit : BuiltTexture | undefined;
     let texSkyMultiScatter : BuiltTexture | undefined;
     let texSkyView : BuiltTexture | undefined;
     let texSkyIrradiance : BuiltTexture | undefined;
-    
+
     if (WorldHasSky) {
         texSkyTransmit = pipeline.createTexture('texSkyTransmit')
             .format(Format.RGB16F)
@@ -205,6 +232,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location('objects/discard').compile();
     }
 
+    pipeline.createObjectShader("shadow", Usage.SHADOW)
+        .location('objects/shadow-sky')
+        .target(0, texShadowColor)
+        .blendOff(0);
+    
     discardShader("sky-discard", Usage.SKYBOX);
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
     discardShader("cloud-discard", Usage.CLOUDS);
@@ -214,8 +246,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportBool("disableFog", false)
         .exportBool("EnableTAA", ENABLE_TAA)
         .target(0, texAlbedoGB)
-        .target(1, texNormalGB);
-    if (ENABLE_TAA) shaderBasicOpaque.target(2, texVelocity);
+        .target(1, texNormalGB)
+        .target(2, texMatLightGB);
+    if (ENABLE_TAA) shaderBasicOpaque.target(3, texVelocity);
     shaderBasicOpaque.compile();
 
     const shaderBasicTrans = pipeline.createObjectShader("basic-translucent", Usage.TERRAIN_TRANSLUCENT)
