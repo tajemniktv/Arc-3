@@ -3,6 +3,7 @@ import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 
 let TAA_ENABLED : boolean;
 let ENABLE_BLOOM : boolean;
+let PointLight_Enabled: boolean;
 const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
 const Debug_WhiteWorld = false;
@@ -37,9 +38,16 @@ export function configureRenderer(config: RendererConfig): void {
     config.shadow.cascades = 4;
     config.shadow.resolution = 1024;
     config.shadow.distance = 200;
+
+    config.pointLight.maxCount = 256;
+    config.pointLight.resolution = 128;
+    config.pointLight.cacheRealTimeTerrain = false;
+    config.pointLight.nearPlane = 0.1;
+    config.pointLight.farPlane = 16.0;
 }
 
 export function configurePipeline(pipeline: PipelineConfig): void {
+    PointLight_Enabled = true;
     TAA_ENABLED = getBoolSetting('POST_TAA_ENABLED');
     ENABLE_BLOOM = getBoolSetting('BLOOM_ENABLED');
 
@@ -59,6 +67,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     pipeline.setGlobalExport(pipeline.createExportList()
+        .addBool('PointLight_Enabled', PointLight_Enabled)
         .addBool('TAA_Enabled', TAA_ENABLED)
         .addBool('Debug_WhiteWorld', Debug_WhiteWorld)
         .build());
@@ -167,16 +176,16 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
 
-    const texDiffuse = pipeline.createTexture('texDiffuse')
+    const texDiffuse = pipeline.createImageTexture('texDiffuse', 'imgDiffuse')
         .width(screenWidth)
         .height(screenHeight)
-        .format(Format.RGB16F)
+        .format(Format.RGBA16F)
         .build();
 
-    const texSpecular = pipeline.createTexture('texSpecular')
+    const texSpecular = pipeline.createImageTexture('texSpecular', 'imgSpecular')
         .width(screenWidth)
         .height(screenHeight)
-        .format(Format.RGB16F)
+        .format(Format.RGBA16F)
         .build();
 
     pipeline.createImageTexture('texHistogram', 'imgHistogram')
@@ -242,10 +251,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location('objects/discard').compile();
     }
 
-    pipeline.createObjectShader("shadow", Usage.SHADOW)
+    pipeline.createObjectShader("shadow-sky", Usage.SHADOW)
         .location('objects/shadow_sky')
         .target(0, texShadowColor)
         .blendOff(0)
+        .compile();
+
+    pipeline.createObjectShader('shadow-point', Usage.POINT)
+        .location("objects/shadow_point")
         .compile();
     
     discardShader("sky-discard", Usage.SKYBOX);
@@ -280,6 +293,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("deferred/lighting-block", "lightingBlock")
         .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
         .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
+        .compile();
+
+    stagePostOpaque.createCompute("deferred-lighting-block-point")
+        .location("deferred/lighting-block-point", "applyPointLights")
+        .workGroups(
+            Math.ceil(screenWidth / 16.0),
+            Math.ceil(screenHeight / 16.0),
+            1)
         .compile();
 
     stagePostOpaque.createComposite("deferred-lighting-final")
