@@ -5,7 +5,7 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 
-extern static const bool EnableTAA;
+extern static const bool TAA_Enabled;
 extern static const bool disableFog;
 
 ConstantBuffer<SceneBuffer> scene;
@@ -47,7 +47,7 @@ VertexOutput vertexMain(Vertex input) {
         output.color = lerp(output.color, overlayColor, overlayColor.a);
     }
 
-    if (EnableTAA) {
+    if (TAA_Enabled) {
         output.position.xy += scene.taa_jitter * (2.0 * output.position.w);
     }
 

@@ -5,7 +5,8 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 
-export static const uint SHADOW_CASCADE_COUNT = 4;
+extern static const bool TAA_Enabled;
+extern static const uint SHADOW_CASCADE_COUNT = 4;
 
 ConstantBuffer<SceneBuffer> scene;
 
@@ -52,7 +53,9 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     uint2 uv = uint2(pos);
 
     float depth = mainDepthTex[uv];
-    float2 texcoord = pos / ap.game.screenSize - scene.taa_jitter;
+    float2 texcoord = pos / ap.game.screenSize;
+    if (TAA_Enabled) texcoord -= scene.taa_jitter;
+
     float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
     float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos);

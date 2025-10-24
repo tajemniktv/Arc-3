@@ -23,7 +23,7 @@ static const float3x3 XYZ_TO_RGB = float3x3(
 
 float3 xyz_to_xyY(float3 xyz) {
 	float sum = sumOf(xyz);
-    return float3(xyz.xy / sum, xyz.y);
+    return float3(xyz.xy / max(sum, EPSILON), xyz.y);
 }
 
 float3 xyY_to_xyz(float3 xyY) {

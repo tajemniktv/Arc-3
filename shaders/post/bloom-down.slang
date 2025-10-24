@@ -35,10 +35,10 @@ float3 applyBloomDown(float2 pos : SV_Position) : SV_Target0 {
     float3 l = sample_src(fma(srcPixelSize, float2(-1.0, -1.0), uv));
     float3 m = sample_src(fma(srcPixelSize, float2(+1.0, -1.0), uv));
 
-    float3 outColor =   e * 0.125;
+    float3 outColor =   e * 0.12500;
     outColor += (a+c+g+i) * 0.03125;
-    outColor += (b+d+f+h) * 0.0625;
-    outColor += (j+k+l+m) * 0.125;
+    outColor += (b+d+f+h) * 0.06250;
+    outColor += (j+k+l+m) * 0.12500;
 
     return clamp(outColor, 0.0, 65000.0);
 }

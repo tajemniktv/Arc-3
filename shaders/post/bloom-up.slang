@@ -32,16 +32,13 @@ float3 applyBloomUp(float2 pos : SV_Position) : SV_Target0 {
     float3 h = sample_src(fma(srcPixelSize, float2( 0.0, -1.0), uv));
     float3 i = sample_src(fma(srcPixelSize, float2(+1.0, -1.0), uv));
 
-    float3 outColor = e * 4.0;
-    outColor += (b+d+f+h) * 2.0;
-    outColor += (a+c+g+i);
-    outColor *= 1.0 / 16.0;
+    float3 outColor =   e * 0.2500;
+    outColor += (b+d+f+h) * 0.1250;
+    outColor += (a+c+g+i) * 0.0625;
 
     if (BLOOM_INDEX == 0u) {
-        outColor *= Effect_Bloom_Strength;
-
-        outColor += TEX_SRC[int2(pos)];
-        outColor = clamp(outColor, 0.0, 65.0);
+        outColor = outColor * Effect_Bloom_Strength + TEX_SRC[int2(pos)];
+        outColor = clamp(outColor, 0.0, 65000.0);
     }
 
     return outColor;

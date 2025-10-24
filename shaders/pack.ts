@@ -1,13 +1,13 @@
 import {BufferFlipper} from "./scripts/BufferFlipper";
 import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 
-const ENABLE_TAA = true;
-const ENABLE_BLOOM = false;
+let TAA_ENABLED : boolean;
+let ENABLE_BLOOM : boolean;
 const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
 
-const Scene_PostExposureMin = -2.8;
-const Scene_PostExposureMax = 1.8;
+const Scene_PostExposureMin = -0.2;
+const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
 
 let texFinalPrevA : BuiltTexture | undefined;
@@ -39,6 +39,9 @@ export function configureRenderer(config: RendererConfig): void {
 }
 
 export function configurePipeline(pipeline: PipelineConfig): void {
+    TAA_ENABLED = getBoolSetting('POST_TAA_ENABLED');
+    ENABLE_BLOOM = getBoolSetting('BLOOM_ENABLED');
+
     const renderConfig = pipeline.getRendererConfig();
 
     let WorldHasSky = false;
@@ -53,6 +56,10 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             WorldHasSky = true;
             break;
     }
+
+    pipeline.setGlobalExport(pipeline.createExportList()
+        .addBool('TAA_Enabled', TAA_ENABLED)
+        .build());
 
     pipeline.createBuffer("scene", 96, false);
     settings = pipeline.createStreamingBuffer("settings", 32);
@@ -72,7 +79,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const finalFlipper = new BufferFlipper(texFinalA, texFinalB);
 
     let texVelocity : BuiltTexture | undefined;
-    if (ENABLE_TAA) {
+    if (TAA_ENABLED) {
         texFinalPrevA = pipeline.createImageTexture("texFinalPrevA", "imgFinalPrevA")
             .width(screenWidth)
             .height(screenHeight)
@@ -246,19 +253,20 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const shaderBasicOpaque = pipeline.createObjectShader("basic-opaque", Usage.BASIC)
         .location("objects/opaque")
         .exportBool("disableFog", false)
-        .exportBool("EnableTAA", ENABLE_TAA)
         .target(0, texAlbedoGB)
+        .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
         .target(1, texNormalGB)
-        .target(2, texMatLightGB);
-    if (ENABLE_TAA) shaderBasicOpaque.target(3, texVelocity);
+        .blendOff(1)
+        .target(2, texMatLightGB)
+        .blendOff(2);
+    if (TAA_ENABLED) shaderBasicOpaque.target(3, texVelocity).blendOff(3);
     shaderBasicOpaque.compile();
 
     const shaderBasicTrans = pipeline.createObjectShader("basic-translucent", Usage.TERRAIN_TRANSLUCENT)
         .location("objects/translucent")
         .exportBool("disableFog", false)
-        .exportBool("EnableTAA", ENABLE_TAA)
         .target(0, texFinalA)
-    if (ENABLE_TAA) shaderBasicTrans.target(1, texVelocity);
+    if (TAA_ENABLED) shaderBasicTrans.target(1, texVelocity).blendOff(1);
     shaderBasicTrans.compile();
     
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
@@ -376,7 +384,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         finalFlipper.flip();
     }
 
-    if (ENABLE_TAA) {
+    if (TAA_ENABLED) {
         texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
         imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
 
@@ -401,7 +409,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     finalFlipper.flip();
 
-    if (ENABLE_TAA) {
+    if (TAA_ENABLED) {
         postRender.createCompute("sharpen")
             .location("post/sharpen", "sharpen")
             .workGroups(
@@ -444,9 +452,11 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 }
 
 export function beginFrame(state : WorldState) : void {
-    const alt = state.currentFrame() % 2 == 1;
-    texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
-    imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
+    if (TAA_ENABLED) {
+        const alt = state.currentFrame() % 2 == 1;
+        texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
+        imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
+    }
 
     settings.uploadData();
 }
