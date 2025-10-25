@@ -163,8 +163,8 @@ void applyPointLights(ComputeInput input) {
     // bool hasNormal = any(tex_normal > -1.0);
     // if (hasNormal) tex_normal = normalize(tex_normal);
 
-    const float offsetBias = 0.02;
-    const float normalBias = 0.16;
+    const float offsetBias = 0.06;
+    const float normalBias = 0.12;
     float3 localSamplePos = normalBias * geo_normal + localPos;
 
     float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
@@ -193,7 +193,7 @@ void applyPointLights(ComputeInput input) {
         lightColor *= saturate(lightRange / 15.0);
         float NoLm = max(dot(tex_normal, lightDir), 0.0);
 
-        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
+        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist + offsetBias);
         float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
 
         diffuse += NoLm * lightAtt * shadow * BLOCK_LUX * lightColor;
