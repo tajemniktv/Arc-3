@@ -5,6 +5,8 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 
+import lib.sampling.ERP;
+
 extern static const bool TAA_Enabled;
 extern static const uint SHADOW_CASCADE_COUNT = 4;
 
@@ -65,9 +67,9 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     uint2 mat_light = texMatLightGB[uv];
 
     //float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0;
-    bool hasNormal = any(tex_normal > -1.0);
-    if (hasNormal) tex_normal = normalize(tex_normal);
+    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
+    // bool hasNormal = any(tex_normal > -1.0);
+    // if (hasNormal) tex_normal = normalize(tex_normal);
 
     float4 light = unpackUnorm4x8ToFloat(mat_light.g);
     //float2 lmcoord = light.rg;
@@ -86,10 +88,10 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 skyPos = getSkyPosition(localPos);
 
     float NoLm_sun = 0.0, NoLm_moon = 0.0;
-    if (hasNormal) {
+    // if (hasNormal) {
         NoLm_sun = max(dot(tex_normal, scene.SunLocalDir), 0.0);
         NoLm_moon = max(dot(tex_normal, scene.MoonLocalDir), 0.0);
-    }
+    // }
 
     float3 sunTransmit = sampleSkyTransmit(skyPos, scene.SunLocalDir);
     float3 lightSun = NoLm_sun * sunTransmit * scene.SunColor;
@@ -97,7 +99,6 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 moonTransmit = sampleSkyTransmit(skyPos, scene.MoonLocalDir);
     float3 lightMoon = NoLm_moon * moonTransmit * scene.MoonColor;
 
-    //float3 viewLocalDir = normalize(localPos);
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
 
     output.diffuse = (lightSun + lightMoon) / PI * shadow + ambient;

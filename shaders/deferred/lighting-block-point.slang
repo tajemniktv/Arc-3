@@ -4,6 +4,7 @@ import lib.common;
 import lib.sampling.depth;
 
 extern static const float BLOCK_LUX = 200.0;
+extern static const int PointLight_MaxCount;
 extern static const bool TAA_Enabled;
 
 static const uint groupResX = 16;
@@ -31,6 +32,25 @@ Sampler2D<float> mainDepthTex;
 SamplerCubeArrayShadow pointLightFiltered;
 
 
+float GetLightAttenuation_Linear(const in float lightDist, const in float lightRange) {
+    float lightDistF = lightDist / lightRange;
+    lightDistF = 1.0 - saturate(lightDistF);
+    return pow(lightDistF, 5);
+}
+
+float GetLightAttenuation_invSq(const in float lightDist, const in float lightRadius) {
+    return 1.0 / ((lightDist*lightDist) + lightRadius);
+}
+
+float GetLightAttenuation(const in float lightDist, const in float lightRange, const in float lightRadius) {
+    float linear = GetLightAttenuation_Linear(lightDist, lightRange);
+    float invSq = GetLightAttenuation_invSq(max(lightDist-lightRadius, 0.0), lightRadius);
+
+    float f = saturate(lightDist / lightRange);
+    return lerp(invSq, linear, f);
+}
+
+
 struct ComputeInput {
     uint groupIndex : SV_GroupIndex;
     uint3 groupPos : SV_GroupID;
@@ -55,7 +75,6 @@ void applyPointLights(ComputeInput input) {
     float depth = mainDepthTex[input.globalPos.xy];
     float depthL = linearizeDepth(depth * 2.0 - 1.0, ap_camera_near, ap_camera_far);
     uint depthInt = uint(depthL / ap_camera_far * uint.maxValue);
-    // TODO: linearize depth?
     depthMinInt.min(depthInt);
     depthMaxInt.max(depthInt);
 
@@ -64,7 +83,7 @@ void applyPointLights(ComputeInput input) {
     float depthMin = depthMinInt.load() / float(uint.maxValue) * ap_camera_far;
     float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap_camera_far;
 
-    if (input.groupIndex < ap.lights.count) {
+    if (input.groupIndex < PointLight_MaxCount) {
         PointLight light = ap.lights[input.groupIndex];
 
         if (light.block >= 0) {
@@ -134,10 +153,12 @@ void applyPointLights(ComputeInput input) {
         float lightDist = length(lightOffset);
         float3 lightDir = lightOffset / lightDist;
 
-        float lightAtt = 1.0 - saturate(lightDist / lightRange);
+        const float lightRadius = 0.5;
+        float lightAtt = GetLightAttenuation(lightDist, lightRange, lightRadius);
         if (lightAtt < EPSILON) continue;
 
         float3 lightColor = RgbToLinear(block.lightColor.rgb);
+        lightColor *= saturate(lightRange / 15.0);
         float NoLm = max(dot(tex_normal, lightDir), 0.0);
 
         float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);

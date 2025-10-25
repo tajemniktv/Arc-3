@@ -35,6 +35,9 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
             case DEBUG_GB_LMCOORD:
                 color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).rrg;
                 break;
+            case DEBUG_GB_OCCLUSION_EMISSION:
+                color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).bba;
+                break;
         }
     }
 

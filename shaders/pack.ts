@@ -21,7 +21,7 @@ let settings : BuiltStreamingBuffer | undefined;
 
 export function configureRenderer(config: RendererConfig): void {
     config.sunPathRotation = 20;
-    config.ambientOcclusionLevel = 0;
+    config.ambientOcclusionLevel = 1.0;
     config.mergedHandDepth = true;
     config.disableShade = true;
 
@@ -68,6 +68,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     pipeline.setGlobalExport(pipeline.createExportList()
         .addBool('PointLight_Enabled', PointLight_Enabled)
+        .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', TAA_ENABLED)
         .addBool('Debug_WhiteWorld', Debug_WhiteWorld)
         .build());

@@ -23,7 +23,8 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
     float3 right = normalize(cross(up, normal));
     up = normalize(cross(normal, right));
 
-    float3x3 tbn = float3x3(right, up, normal);
+    // float3x3 tbn = float3x3(right, up, normal);
+    float3x3 tbn = float3x3(normal, up, right);
 
     float3 skyPos = getSkyPosition(0.0);
 
@@ -81,7 +82,7 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
 
 [[shader("fragment")]]
 float4 bakeSkyIrradiance(float2 pos : SV_Position) : SV_Target0 {
-    const uint2 viewportDimensions = 256;
+    const uint2 viewportDimensions = 32;
     float2 uv = pos / viewportDimensions;
 
     float3 viewDir = DirectionFromUV(uv);
