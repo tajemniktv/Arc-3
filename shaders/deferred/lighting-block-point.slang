@@ -50,6 +50,24 @@ float GetLightAttenuation(const in float lightDist, const in float lightRange, c
     return lerp(invSq, linear, f);
 }
 
+float4 projectSphereView(float3 center, float radius, float P00, float P11) {
+    float3 cr = center * radius;
+    float czr2 = center.z * center.z - radius * radius;
+    float2 v = sqrt(center.xy * center.xy + czr2);
+
+    float minx = (v.x * center.x - cr.z) / (v.x * center.z + cr.x);
+    float maxx = (v.x * center.x + cr.z) / (v.x * center.z - cr.x);
+
+    float miny = (v.y * center.y - cr.z) / (v.y * center.z + cr.y);
+    float maxy = (v.y * center.y + cr.z) / (v.y * center.z - cr.y);
+
+    float4 aabb = float4(minx * P00, miny * P11, maxx * P00, maxy * P11);
+    // clip space -> uv space
+    aabb = aabb * float4(0.5f, -0.5f, 0.5f, -0.5f) + float4(0.5f);
+
+    return aabb;
+}
+
 
 struct ComputeInput {
     uint groupIndex : SV_GroupIndex;
@@ -97,19 +115,14 @@ void applyPointLights(ComputeInput input) {
             if (-lightViewPos.z - lightRange > depthMax) hit = false;
 
             // TODO: test X/Y
-            // float3 lightViewPosMin = lightViewPos - lightRange;
-            // float3 lightClipPosMin = unproject(ap.camera.projection, lightViewPosMin);
-            // lightClipPosMin = lightClipPosMin * 0.5 + 0.5;
-
-            // float3 lightViewPosMax = lightViewPos + lightRange;
-            // float3 lightClipPosMax = unproject(ap.camera.projection, lightViewPosMax);
-            // lightClipPosMax = lightClipPosMax * 0.5 + 0.5;
+            // float4 min_max = projectSphereView(lightViewPos, lightRange, ap.camera.projection._m00, ap.camera.projection._m11);
             
-            // float2 groupPosMin = input.globalPos.xy / float2(ap.game.screenSize);
-            // float2 groupPosMax = (input.globalPos.xy + float2(groupResX, groupResY)) / float2(ap.game.screenSize);
+            // uint2 groupPos = input.groupPos.xy * WorkgroupSize().xy;
+            // float2 groupPosMin = groupPos / float2(ap.game.screenSize);
+            // float2 groupPosMax = (groupPos + WorkgroupSize().xy) / float2(ap.game.screenSize);
 
-            // if (any(lightClipPosMax.xy < groupPosMin)) hit = false;
-            // if (any(lightClipPosMin.xy > groupPosMax)) hit = false;
+            // if (any(min_max.xy > groupPosMax)) hit = false;
+            // if (any(min_max.zw < groupPosMin)) hit = false;
 
             if (hit) {
                 uint index = counter.increment();
