@@ -98,9 +98,9 @@ void applyPointLights(ComputeInput input) {
 
     float depth = mainDepthTex[input.globalPos.xy];
     float depthL = linearizeDepth(depth * 2.0 - 1.0, ap_camera_near, ap_camera_far);
-    uint depthInt = uint(depthL / ap_camera_far * uint.maxValue);
-    depthMinInt.min(depthInt);
-    depthMaxInt.max(depthInt);
+    float depthInt = depthL / ap_camera_far * uint.maxValue;
+    depthMinInt.min(uint(floor(depthInt)));
+    depthMaxInt.max(uint(ceil(depthInt)));
 
     GroupMemoryBarrierWithGroupSync();
 
@@ -111,7 +111,7 @@ void applyPointLights(ComputeInput input) {
         PointLight light = ap.lights[input.groupIndex];
 
         if (light.block >= 0) {
-            uint lightRange = ap.blocks[light.block].emission;
+            uint lightRange = ap.blocks[light.block].emission + 0.5;
 
             // compute view-space position and collision test
             float3 lightViewPos = mul3(ap.camera.view, light.position);
