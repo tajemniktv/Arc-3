@@ -1,6 +1,7 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.sampling.depth;
 
 extern static const float BLOCK_LUX = 200.0;
 extern static const bool TAA_Enabled;
@@ -48,16 +49,20 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    const float ap_camera_near = 0.05;
+    float ap_camera_far = ap.world.renderDistance * 4.0;
+
     float depth = mainDepthTex[input.globalPos.xy];
-    uint depthInt = uint(depth * uint.maxValue);
+    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap_camera_near, ap_camera_far);
+    uint depthInt = uint(depthL / ap_camera_far * uint.maxValue);
     // TODO: linearize depth?
     depthMinInt.min(depthInt);
     depthMaxInt.max(depthInt);
 
     GroupMemoryBarrierWithGroupSync();
 
-    float depthMin = depthMinInt.load() / float(uint.maxValue);
-    float depthMax = depthMaxInt.load() / float(uint.maxValue);
+    float depthMin = depthMinInt.load() / float(uint.maxValue) * ap_camera_far;
+    float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap_camera_far;
 
     if (input.groupIndex < ap.lights.count) {
         PointLight light = ap.lights[input.groupIndex];
@@ -65,22 +70,27 @@ void applyPointLights(ComputeInput input) {
         if (light.block >= 0) {
             uint lightRange = ap.blocks[light.block].emission;
 
-            // compute screen-space bounds
+            // compute view-space position and collision test
             float3 lightViewPos = mul3(ap.camera.view, light.position);
-            //float3 lightClipPos = unproject(ap.camera.projection, lightViewPos);
-
-            float3 lightViewPosMin = lightViewPos - float2(lightRange, -lightRange).xxy;
-            float3 lightClipPosMin = unproject(ap.camera.projection, lightViewPosMin);
-            lightClipPosMin = lightClipPosMin * 0.5 + 0.5;
-
-            float3 lightViewPosMax = lightViewPos + float2(lightRange, -lightRange).xxy;
-            float3 lightClipPosMax = unproject(ap.camera.projection, lightViewPosMax);
-            lightClipPosMax = lightClipPosMax * 0.5 + 0.5;
-            
-            // TODO: collision test and set mask
             bool hit = true;
-            // if (lightClipPosMax.z < depthMin) hit = false;
-            // if (lightClipPosMin.z > depthMax) hit = false;
+
+            if (-lightViewPos.z + lightRange < depthMin) hit = false;
+            if (-lightViewPos.z - lightRange > depthMax) hit = false;
+
+            // TODO: test X/Y
+            // float3 lightViewPosMin = lightViewPos - lightRange;
+            // float3 lightClipPosMin = unproject(ap.camera.projection, lightViewPosMin);
+            // lightClipPosMin = lightClipPosMin * 0.5 + 0.5;
+
+            // float3 lightViewPosMax = lightViewPos + lightRange;
+            // float3 lightClipPosMax = unproject(ap.camera.projection, lightViewPosMax);
+            // lightClipPosMax = lightClipPosMax * 0.5 + 0.5;
+            
+            // float2 groupPosMin = input.globalPos.xy / float2(ap.game.screenSize);
+            // float2 groupPosMax = (input.globalPos.xy + float2(groupResX, groupResY)) / float2(ap.game.screenSize);
+
+            // if (any(lightClipPosMax.xy < groupPosMin)) hit = false;
+            // if (any(lightClipPosMin.xy > groupPosMax)) hit = false;
 
             if (hit) {
                 uint index = counter.increment();
