@@ -35,13 +35,13 @@ static const float3x3 YUV_TO_RGB = float3x3(
 
 float2 getReprojectedClipPos(const in float2 texcoord, const in float depthNow, const in float2 velocity) {
     float3 clipPos = float3(texcoord, depthNow) * 2.0 - 1.0;
-    float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
+    float3 viewPos = project(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos.xyz);
 
     float3 localPosPrev = localPos + (ap.camera.position - ap.temporal.position);
 
     float3 viewPosPrev = mul3(ap.temporal.view, localPosPrev);
-    float3 clipPosPrev = unproject(ap.temporal.projection, viewPosPrev);
+    float3 clipPosPrev = project(ap.temporal.projection, viewPosPrev);
     return clipPosPrev.xy * 0.5 + 0.5 - velocity;
 }
 

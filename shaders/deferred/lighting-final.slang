@@ -24,7 +24,7 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
     if (depth == 1.0) {
         float2 texcoord = pos / ap.game.screenSize;
         float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-        float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
+        float3 viewPos = project(ap.camera.projectionInv, clipPos);
         float3 localPos = mul3(ap.camera.viewInv, viewPos);
         float3 viewLocalDir = normalize(localPos);
 

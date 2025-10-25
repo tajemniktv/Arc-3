@@ -2,6 +2,7 @@ import aperture;
 import buffers.scene;
 import lib.common;
 import lib.sampling.depth;
+import lib.hsv;
 
 extern static const float BLOCK_LUX = 200.0;
 extern static const int PointLight_MaxCount;
@@ -68,6 +69,11 @@ float4 projectSphereView(float3 center, float radius, float P00, float P11) {
     return aabb;
 }
 
+float3 unprojectCorner(const in float screenPosX, const in float screenPosY) {
+    float3 ndcPos = float3(screenPosX, screenPosY, 1.0) * 2.0 - 1.0;
+    return project(ap.camera.projectionInv, ndcPos);
+}
+
 
 struct ComputeInput {
     uint groupIndex : SV_GroupIndex;
@@ -115,14 +121,24 @@ void applyPointLights(ComputeInput input) {
             if (-lightViewPos.z - lightRange > depthMax) hit = false;
 
             // TODO: test X/Y
-            // float4 min_max = projectSphereView(lightViewPos, lightRange, ap.camera.projection._m00, ap.camera.projection._m11);
+            uint2 groupPos = input.groupPos.xy * WorkgroupSize().xy;
+            float2 groupPosMin = groupPos / float2(ap.game.screenSize);
+            float2 groupPosMax = (groupPos + WorkgroupSize().xy) / float2(ap.game.screenSize);
             
-            // uint2 groupPos = input.groupPos.xy * WorkgroupSize().xy;
-            // float2 groupPosMin = groupPos / float2(ap.game.screenSize);
-            // float2 groupPosMax = (groupPos + WorkgroupSize().xy) / float2(ap.game.screenSize);
+            float3 c1 = unprojectCorner(groupPosMin.x, groupPosMin.y);
+            float3 c2 = unprojectCorner(groupPosMax.x, groupPosMin.y);
+            float3 c3 = unprojectCorner(groupPosMin.x, groupPosMax.y);
+            float3 c4 = unprojectCorner(groupPosMax.x, groupPosMax.y);
 
-            // if (any(min_max.xy > groupPosMax)) hit = false;
-            // if (any(min_max.zw < groupPosMin)) hit = false;
+            float3 clipDown  = normalize(cross(c2, c1));
+            float3 clipRight = normalize(cross(c4, c2));
+            float3 clipUp    = normalize(cross(c3, c4));
+            float3 clipLeft  = normalize(cross(c1, c3));
+            
+            if (dot(clipDown,  lightViewPos) > lightRange) hit = false;
+            if (dot(clipRight, lightViewPos) > lightRange) hit = false;
+            if (dot(clipUp,    lightViewPos) > lightRange) hit = false;
+            if (dot(clipLeft,  lightViewPos) > lightRange) hit = false;
 
             if (hit) {
                 uint index = counter.increment();
@@ -137,7 +153,7 @@ void applyPointLights(ComputeInput input) {
     if (TAA_Enabled) texcoord -= scene.taa_jitter;
 
     float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-    float3 viewPos = unproject(ap.camera.projectionInv, clipPos);
+    float3 viewPos = project(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos);
 
     uint2 normals = texNormalGB[input.globalPos.xy];
@@ -155,6 +171,9 @@ void applyPointLights(ComputeInput input) {
     float3 specular = imgSpecular[input.globalPos.xy].rgb;
 
     uint total = counter.load();
+    // float hue = lerp(0.75, 0.0, total / 256.0);
+    // specular = HsvToRgb(float3(hue, 1.0, 10.0));
+
     for (uint i = 0; i < total; i++) {
         uint lightIndex = sharedLightList[i];
         PointLight light = ap.lights[lightIndex];
