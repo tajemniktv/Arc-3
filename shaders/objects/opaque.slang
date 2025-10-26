@@ -48,7 +48,6 @@ VertexOutput vertexMain(Vertex input) {
 
     output.tangent = 0.0;
     if (let value = input.tangent()) {
-        //output.tangent = value;
         output.tangent.xyz = mul(input.normalMatrix(), value.xyz);
         output.tangent.xyz = mul(float3x3(ap.camera.viewInv), output.tangent.xyz);
         output.tangent.xyz = normalize(output.tangent.xyz);
