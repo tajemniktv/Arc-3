@@ -1,12 +1,6 @@
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;
 
-static const int DEBUG_GB_ALBEDO = 0;
-static const int DEBUG_GB_NORMAL_GEO = 1;
-static const int DEBUG_GB_NORMAL_TEX = 2;
-static const int DEBUG_GB_LMCOORD = 3;
-static const int DEBUG_GB_OCCLUSION_EMISSION = 4;
-
 
 float minOf(float x, float y, float z) {
     return min(x, min(y, z));

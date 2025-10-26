@@ -4,7 +4,7 @@ import lib.common;
 import lib.sampling.depth;
 import lib.hsv;
 
-extern static const float BLOCK_LUX = 200.0;
+extern static const float BLOCK_LUX;
 extern static const int PointLight_MaxCount;
 extern static const bool TAA_Enabled;
 

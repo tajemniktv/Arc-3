@@ -1,13 +1,9 @@
+import {Options} from "./scripts/Options";
 import {BufferFlipper} from "./scripts/BufferFlipper";
 import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 
-let TAA_ENABLED : boolean;
-let ENABLE_BLOOM : boolean;
-let PointLight_Enabled: boolean;
-const DEBUG_MATERIAL = -1;
-const DEBUG_HISTOGRAM = true;
-const Debug_WhiteWorld = false;
 
+const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
@@ -39,18 +35,14 @@ export function configureRenderer(config: RendererConfig): void {
     config.shadow.resolution = 1024;
     config.shadow.distance = 200;
 
-    config.pointLight.maxCount = 256;
-    config.pointLight.resolution = 256;
+    config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
+    config.pointLight.resolution = options.Lighting_Point_Resolution;
     config.pointLight.cacheRealTimeTerrain = false;
     config.pointLight.nearPlane = 0.1;
     config.pointLight.farPlane = 16.0;
 }
 
 export function configurePipeline(pipeline: PipelineConfig): void {
-    PointLight_Enabled = true;
-    TAA_ENABLED = getBoolSetting('POST_TAA_ENABLED');
-    ENABLE_BLOOM = getBoolSetting('BLOOM_ENABLED');
-
     const renderConfig = pipeline.getRendererConfig();
 
     let WorldHasSky = false;
@@ -67,10 +59,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     pipeline.setGlobalExport(pipeline.createExportList()
-        .addBool('PointLight_Enabled', PointLight_Enabled)
+        .addFloat('BLOCK_LUX', 200)
+        .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
-        .addBool('TAA_Enabled', TAA_ENABLED)
-        .addBool('Debug_WhiteWorld', Debug_WhiteWorld)
+        .addBool('TAA_Enabled', options.Post_TAA_Enabled)
+        .addBool('Debug_WhiteWorld', options.Debug_WhiteWorld)
         .build());
 
     pipeline.createBuffer("scene", 96, false);
@@ -91,7 +84,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const finalFlipper = new BufferFlipper(texFinalA, texFinalB);
 
     let texVelocity : BuiltTexture | undefined;
-    if (TAA_ENABLED) {
+    if (options.Post_TAA_Enabled) {
         texFinalPrevA = pipeline.createImageTexture("texFinalPrevA", "imgFinalPrevA")
             .width(screenWidth)
             .height(screenHeight)
@@ -204,7 +197,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    if (!DEBUG_HISTOGRAM) {
+    if (!options.Debug_Histogram) {
         setup.createCompute('histogram-clear')
             .location('setup/histogram-clear', "clearHistogram")
             .workGroups(1, 1, 1)
@@ -260,9 +253,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .blendOff(0)
         .compile();
 
-    pipeline.createObjectShader('shadow-point', Usage.POINT)
-        .location("objects/shadow_point")
-        .compile();
+    if (options.Lighting_Point_Enabled) {
+        pipeline.createObjectShader('shadow-point', Usage.POINT)
+            .location("objects/shadow_point")
+            .compile();
+    }
     
     discardShader("sky-discard", Usage.SKYBOX);
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
@@ -274,14 +269,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
         .target(1, texNormalGB).blendOff(1)
         .target(2, texMatLightGB).blendOff(2);
-    if (TAA_ENABLED) shaderBasicOpaque.target(3, texVelocity).blendOff(3);
+    if (options.Post_TAA_Enabled) shaderBasicOpaque.target(3, texVelocity).blendOff(3);
     shaderBasicOpaque.compile();
 
     const shaderBasicTrans = pipeline.createObjectShader("basic-translucent", Usage.TERRAIN_TRANSLUCENT)
         .location("objects/translucent")
         .exportBool("disableFog", false)
         .target(0, texFinalA)
-    if (TAA_ENABLED) shaderBasicTrans.target(1, texVelocity).blendOff(1);
+    if (options.Post_TAA_Enabled) shaderBasicTrans.target(1, texVelocity).blendOff(1);
     shaderBasicTrans.compile();
     
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
@@ -319,7 +314,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
-    if (DEBUG_HISTOGRAM) {
+    if (options.Debug_Histogram) {
         postRender.createCompute('histogram-clear')
             .location('setup/histogram-clear', "clearHistogram")
             .workGroups(1, 1, 1)
@@ -340,7 +335,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     postRender.createCompute('exposure-compute')
         .location('post/exposure-compute', "computeExposure")
         .workGroups(1, 1, 1)
-        .exportBool("DEBUG_HISTOGRAM", DEBUG_HISTOGRAM)
+        .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
         .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
         .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
@@ -354,7 +349,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportFloat("Scene_PostExposureOffset", Scene_PostExposureOffset)
         .compile();
 
-    if (ENABLE_BLOOM) {
+    if (options.Post_Bloom_Enabled) {
         finalFlipper.flip();
 
         const screenWidth_half = Math.ceil(screenWidth / 2.0);
@@ -410,7 +405,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         bloomStage.end();
     }
 
-    if (TAA_ENABLED) {
+    if (options.Post_TAA_Enabled) {
         texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
         imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
 
@@ -435,7 +430,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .overrideObject("texSource", finalFlipper.getReadTextureName())
         .compile();
 
-    if (TAA_ENABLED) {
+    if (options.Post_TAA_Enabled) {
         finalFlipper.flip();
 
         postRender.createCompute("sharpen")
@@ -449,13 +444,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    if (DEBUG_MATERIAL >= 0 || DEBUG_HISTOGRAM) {
+    if (options.Debug_Material > 0 || options.Debug_Histogram) {
         postRender.createComposite("debug")
             .location("post/debug", "renderDebugOverlay")
             .target(0, finalFlipper.getWriteTexture())
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-            .exportInt('DEBUG_MATERIAL', DEBUG_MATERIAL)
-            .exportBool('DEBUG_HISTOGRAM', DEBUG_HISTOGRAM)
+            .exportInt('DEBUG_MATERIAL', options.Debug_Material)
+            .exportBool('DEBUG_HISTOGRAM', options.Debug_Histogram)
             .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
             .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();
@@ -478,7 +473,7 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 }
 
 export function beginFrame(state : WorldState) : void {
-    if (TAA_ENABLED) {
+    if (options.Post_TAA_Enabled) {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);

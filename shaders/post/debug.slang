@@ -7,6 +7,12 @@ extern static const bool DEBUG_HISTOGRAM;
 extern static const float Scene_PostExposureMin;
 extern static const float Scene_PostExposureMax;
 
+static const int DEBUG_GB_ALBEDO = 1;
+static const int DEBUG_GB_NORMAL_GEO = 2;
+static const int DEBUG_GB_NORMAL_TEX = 3;
+static const int DEBUG_GB_LMCOORD = 4;
+static const int DEBUG_GB_OCCLUSION = 5;
+
 ConstantBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texAlbedoGB;
@@ -18,7 +24,7 @@ Sampler1D<uint> texHistogram;
 float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
     float4 color = float4(0.0);
 
-    if (DEBUG_MATERIAL >= 0) {
+    if (DEBUG_MATERIAL > 0) {
         uint2 uv = uint2(pos);
         color.a = 1.0;
 
@@ -35,8 +41,8 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
             case DEBUG_GB_LMCOORD:
                 color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).rrg;
                 break;
-            case DEBUG_GB_OCCLUSION_EMISSION:
-                color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).bba;
+            case DEBUG_GB_OCCLUSION:
+                color.rgb = unpackUnorm4x8ToFloat(texMatLightGB[uv].g).bbb;
                 break;
         }
     }

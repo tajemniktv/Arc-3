@@ -1,0 +1,43 @@
+screen.MATERIAL=Materials
+
+option.MATERIAL_FORMAT=Format
+value.MATERIAL_FORMAT.0=None
+value.MATERIAL_FORMAT.1=Old PBR
+value.MATERIAL_FORMAT.2=Lab PBR
+
+
+screen.LIGHTING=Lighting
+
+screen.LIGHTING_POINT=Point Lights
+
+option.LIGHTING_POINT_ENABLED=Enabled
+
+option.LIGHTING_POINT_MAXCOUNT=Max Light Count
+
+option.LIGHTING_POINT_RESOLUTION=Resolution
+suffix.LIGHTING_POINT_RESOLUTION=x
+
+
+screen.POST=Post-Processing
+
+option.POST_BLOOM_ENABLED=Bloom
+
+option.POST_TAA_ENABLED=TAA
+
+
+screen.DEBUG=Debugging
+
+option.DEBUG_MATERIAL=Opaque Material
+option.DEBUG_MATERIAL.comment=Display the deferred data for the opaque pass.
+value.DEBUG_MATERIAL.0=None
+value.DEBUG_MATERIAL.1=Albedo
+value.DEBUG_MATERIAL.2=Normal-Geometry
+value.DEBUG_MATERIAL.3=Normal-Texture
+value.DEBUG_MATERIAL.4=LightMap Coord
+value.DEBUG_MATERIAL.5=Occlusion
+
+option.DEBUG_WHITEWORLD=White-World
+option.DEBUG_WHITEWORLD.comment=Makes all texztures a plain white color. Useful for debugging lighting without textures.
+
+option.DEBUG_HISTOGRAM=Histogram
+option.DEBUG_HISTOGRAM.comment=Displays a histogram of the scene luminance, used for auto-exposure.
