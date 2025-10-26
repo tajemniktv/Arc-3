@@ -111,7 +111,7 @@ void applyPointLights(ComputeInput input) {
         PointLight light = ap.lights[input.groupIndex];
 
         if (light.block >= 0) {
-            uint lightRange = ap.blocks[light.block].emission + 0.5;
+            float lightRange = ap.blocks[light.block].emission + 0.5;
 
             // compute view-space position and collision test
             float3 lightViewPos = mul3(ap.camera.view, light.position);
@@ -120,7 +120,7 @@ void applyPointLights(ComputeInput input) {
             if (-lightViewPos.z + lightRange < depthMin) hit = false;
             if (-lightViewPos.z - lightRange > depthMax) hit = false;
 
-            // TODO: test X/Y
+            // test X/Y
             uint2 groupPos = input.groupPos.xy * WorkgroupSize().xy;
             float2 groupPosMin = groupPos / float2(ap.game.screenSize);
             float2 groupPosMax = (groupPos + WorkgroupSize().xy) / float2(ap.game.screenSize);
@@ -159,9 +159,6 @@ void applyPointLights(ComputeInput input) {
     uint2 normals = texNormalGB[input.globalPos.xy];
     float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
     float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
-
-    // bool hasNormal = any(tex_normal > -1.0);
-    // if (hasNormal) tex_normal = normalize(tex_normal);
 
     const float offsetBias = 0.06;
     const float normalBias = 0.12;

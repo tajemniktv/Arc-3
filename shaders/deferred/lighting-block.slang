@@ -30,9 +30,7 @@ FragmentOutput lightingBlock(float2 pos : SV_Position) {
     uint2 mat_light = texMatLightGB[uv];
 
     //float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0;
-    bool hasNormal = any(tex_normal > -1.0);
-    if (hasNormal) tex_normal = normalize(tex_normal);
+    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
 
     float4 light = unpackUnorm4x8ToFloat(mat_light.g);
     float lmcoord_x = light.r * light.r;

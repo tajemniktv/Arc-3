@@ -2,6 +2,8 @@ import aperture;
 import buffers.scene;
 import lib.common;
 import lib.sampling.lmcoord;
+import lib.material;
+import lib.TBN;
 
 extern static const bool disableFog;
 extern static const bool TAA_Enabled;
@@ -16,6 +18,7 @@ struct VertexOutput {
     float2 light;
     float3 normal;
     float occlusion;
+    float4 tangent;
 };
 
 [[shader("vertex")]]
@@ -32,14 +35,23 @@ VertexOutput vertexMain(Vertex input) {
     output.light = LightMapNorm(input.light());
     output.light = output.light * output.light;
 
-    output.normal = 0.0;
-    if (let normal = input.normal()) {
-        output.normal = mul(input.normalMatrix(), normal);
-        output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
-    }
-
     if (let overlayColor = input.overlayColor()) {
         output.color = lerp(output.color, overlayColor, overlayColor.a);
+    }
+
+    output.normal = 0.0;
+    if (let value = input.normal()) {
+        output.normal = mul(input.normalMatrix(), value);
+        output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
+        output.normal = normalize(output.normal);
+    }
+
+    output.tangent = 0.0;
+    if (let value = input.tangent()) {
+        output.tangent.xyz = mul(input.normalMatrix(), value.xyz);
+        output.tangent.xyz = mul(float3x3(ap.camera.viewInv), output.tangent.xyz);
+        output.tangent.xyz = normalize(output.tangent.xyz);
+        output.tangent.w = value.w;
     }
 
     if (TAA_Enabled) {
@@ -59,20 +71,29 @@ struct FragmentOutput {
 
 [[shader("fragment")]]
 FragmentOutput fragmentMain(VertexOutput input) {
-    float4 color = albedoTex.Sample(input.uv) * input.color;
+    float LOD = albedoTex.CalculateLevelOfDetail(input.uv);
+
+    float4 color = albedoTex.SampleLevel(input.uv, LOD) * input.color;
     iris_discardIfNeeded(color);
 
-    float3 tex_normal = normalize(input.normal);
+    float4 normalData = normalTex.SampleLevel(input.uv, LOD);
+    float4 specularData = specularTex.SampleLevel(input.uv, LOD);
 
-    float occlusion = input.occlusion;
-    float emission = 0.0;//?
+    float3 geo_normal = normalize(input.normal);
+
+    float3 tex_normal = mat_normal(normalData.rgb);
+    float3 tangent = normalize(input.tangent.xyz);
+    float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
+    tex_normal = normalize(mul(tex_normal, TBN));
+
+    float occlusion = input.occlusion * normalData.b;
 
     FragmentOutput output;
     output.albedo = color;
-    output.normals.r = packUnorm4x8(float4(input.normal * 0.5 + 0.5, 0.0));
+    output.normals.r = packUnorm4x8(float4(geo_normal * 0.5 + 0.5, 0.0));
     output.normals.g = packUnorm4x8(float4(tex_normal * 0.5 + 0.5, 0.0));
-    output.mat_lit.r = packUnorm4x8(float4(0.0));
-    output.mat_lit.g = packUnorm4x8(float4(input.light, occlusion, emission));
+    output.mat_lit.r = packUnorm4x8(specularData);
+    output.mat_lit.g = packUnorm4x8(float4(input.light, occlusion, 0.0));
     output.velocity = 0.0;
     return output;
 }

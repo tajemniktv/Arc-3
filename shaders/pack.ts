@@ -4,7 +4,7 @@ import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 let TAA_ENABLED : boolean;
 let ENABLE_BLOOM : boolean;
 let PointLight_Enabled: boolean;
-const DEBUG_MATERIAL = -1;
+const DEBUG_MATERIAL = 2;
 const DEBUG_HISTOGRAM = true;
 const Debug_WhiteWorld = false;
 
@@ -211,15 +211,17 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    setup.createComposite('sky-transmit')
-        .location('setup/sky-transmit', 'bakeSkyTransmission')
-        .target(0, texSkyTransmit)
-        .compile();
+    if (WorldHasSky) {
+        setup.createComposite('sky-transmit')
+            .location('setup/sky-transmit', 'bakeSkyTransmission')
+            .target(0, texSkyTransmit)
+            .compile();
 
-    setup.createComposite('sky-multi-scatter')
-        .location('setup/sky-multi-scatter', 'bakeSkyMultiScattering')
-        .target(0, texSkyMultiScatter)
-        .compile();
+        setup.createComposite('sky-multi-scatter')
+            .location('setup/sky-multi-scatter', 'bakeSkyMultiScattering')
+            .target(0, texSkyMultiScatter)
+            .compile();
+    }
 
     setup.end();
 
@@ -231,7 +233,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    //if (internal.WorldHasSky) {
+    if (WorldHasSky) {
         preRender.createComposite('sky-view')
             .location('pre/sky-view', 'bakeSkyView')
             .target(0, texSkyView)
@@ -242,7 +244,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .target(0, texSkyIrradiance)
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .compile();
-    //}
+    }
 
     preRender.end();
 
@@ -284,11 +286,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
-    stagePostOpaque.createComposite("deferred-lighting-sky")
-        .location("deferred/lighting-sky", "lightingSky")
-        .target(0, texDiffuse)
-        .target(1, texSpecular)
-        .compile();
+    if (WorldHasSky) {
+        stagePostOpaque.createComposite("deferred-lighting-sky")
+            .location("deferred/lighting-sky", "lightingSky")
+            .target(0, texDiffuse)
+            .target(1, texSpecular)
+            .compile();
+    }
 
     stagePostOpaque.createComposite("deferred-lighting-block")
         .location("deferred/lighting-block", "lightingBlock")
@@ -309,14 +313,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .target(0, finalFlipper.getWriteTexture())
         .compile();
 
-    //finalFlipper.flip();
-
     stagePostOpaque.end();
 
+    finalFlipper.flip();
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
-
-    finalFlipper.flip();
 
     if (DEBUG_HISTOGRAM) {
         postRender.createCompute('histogram-clear')
