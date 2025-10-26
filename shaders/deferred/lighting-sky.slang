@@ -1,6 +1,7 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.light.fresnel;
 import lib.light.brdf;
 import lib.material;
 import lib.sky.common;
@@ -18,6 +19,40 @@ Sampler2D<uint2> texMatLightGB;
 Sampler2D<float> mainDepthTex;
 
 
+struct SurfaceData {
+    float3 normal;
+    float f0_metal;
+    float roughL;
+
+    // float3 viewDir;
+    // float NoVm;
+};
+
+struct SkyLightData {
+    float3 skyPos;
+    float3 localDir;
+    float3 color;
+};
+
+void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData light, SurfaceData surface, float3 viewDir, float NoVm) {
+    float3 transmit = sampleSkyTransmit(light.skyPos, light.localDir);
+    float3 H = normalize(light.localDir + viewDir);
+
+    float NoLm = max(dot(surface.normal, light.localDir), 0.0);
+    float NoHm = max(dot(surface.normal, H), 0.0);
+    float LoHm = max(dot(light.localDir, H), 0.0);
+    float VoHm = max(dot(viewDir, H), 0.0);
+
+    float D = SampleLightDiffuse(NoVm, NoLm, LoHm, surface.roughL);
+    diffuse += NoLm * D * transmit * light.color;
+
+    //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
+    float F_VoH = F_schlickRough(VoHm, surface.f0_metal, surface.roughL);
+    float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, surface.roughL);
+    specular += NoLm * S * transmit * light.color;
+}
+
+
 struct FragmentOutput {
     float3 diffuse : SV_Target0;
     float3 specular : SV_Target1;
@@ -26,6 +61,9 @@ struct FragmentOutput {
 [[shader("fragment")]]
 FragmentOutput lightingSky(float2 pos : SV_Position) {
     FragmentOutput output;
+    output.diffuse = 0.0;
+    output.specular = 0.0;
+    
     uint2 uv = uint2(pos);
 
     float depth = mainDepthTex[uv];
@@ -35,7 +73,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
     float3 viewPos = project(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos);
-    float3 fragLocalDir = normalize(localPos);
+    float3 viewLocalDir = -normalize(localPos);
 
     //float4 albedo = texAlbedoGB[uv];
     uint2 normalData = texNormalGB[uv];
@@ -43,7 +81,9 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
     float roughness = mat_roughness(specularData.r);
-    float roughL = roughness*roughness;
+    // float f0_metal = 
+
+    // float roughL = roughness*roughness;
 
     //float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
     float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
@@ -52,8 +92,16 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     //float2 lmcoord = light.rg;
     float lmcoord_y = lightData.g*lightData.g;
     float occlusion = lightData.b;
-    
-    float NoV = max(dot(tex_normal, -fragLocalDir), 0.0);
+
+    SurfaceData surface;
+    surface.normal = tex_normal;
+    surface.f0_metal = mat_f0_metal(specularData.g);
+    surface.roughL = roughness*roughness;
+
+    SkyLightData light;
+
+    float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
+    light.skyPos = getSkyPosition(localPos);
 
     int shadowCascade;
     float3 shadowPos;
@@ -64,24 +112,18 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     if (shadowCascade >= 0)
         shadow = SampleShadow(shadowPos, shadowCascade);
 
-    float3 skyPos = getSkyPosition(localPos);
-
-    float NoLm_sun = max(dot(tex_normal, scene.SunLocalDir), 0.0);
-    float3 sunTransmit = sampleSkyTransmit(skyPos, scene.SunLocalDir);
-    float3 lightSun = NoLm_sun * sunTransmit * scene.SunColor;
-
-    float NoLm_moon = max(dot(tex_normal, scene.MoonLocalDir), 0.0);
-    float3 moonTransmit = sampleSkyTransmit(skyPos, scene.MoonLocalDir);
-    float3 lightMoon = NoLm_moon * moonTransmit * scene.MoonColor;
-
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+    
+    light.color = scene.SunColor;
+    light.localDir = scene.SunLocalDir;
+    SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
 
-    // float3 H_sun = normalize();
-    // float LoH_sun = max(dot(scene.SunLocalDir, H_sun), 0.0);
-    // float diffuseSun = SampleLightDiffuse(NoV, NoLm_sun, LoH_sun, roughL);
+    light.color = scene.MoonColor;
+    light.localDir = scene.MoonLocalDir;
+    SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
 
-    output.diffuse = (lightSun + lightMoon) / PI * shadow + ambient;
-    output.specular = 0.0;
+    output.diffuse = output.diffuse / PI * shadow + ambient;
+    output.specular = output.specular * shadow;
 
     return output;
 }

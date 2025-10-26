@@ -1,6 +1,9 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.material;
+import lib.light.brdf;
+import lib.light.fresnel;
 import lib.sampling.depth;
 import lib.hsv;
 
@@ -33,41 +36,41 @@ Sampler2D<float> mainDepthTex;
 SamplerCubeArrayShadow pointLightFiltered;
 
 
-float GetLightAttenuation_Linear(const in float lightDist, const in float lightRange) {
-    float lightDistF = lightDist / lightRange;
-    lightDistF = 1.0 - saturate(lightDistF);
-    return pow(lightDistF, 5);
-}
+// float GetLightAttenuation_Linear(const in float lightDist, const in float lightRange) {
+//     float lightDistF = lightDist / lightRange;
+//     lightDistF = 1.0 - saturate(lightDistF);
+//     return pow(lightDistF, 5);
+// }
 
-float GetLightAttenuation_invSq(const in float lightDist, const in float lightRadius) {
-    return 1.0 / ((lightDist*lightDist) + lightRadius);
-}
+// float GetLightAttenuation_invSq(const in float lightDist, const in float lightRadius) {
+//     return 1.0 / ((lightDist*lightDist) + lightRadius);
+// }
 
-float GetLightAttenuation(const in float lightDist, const in float lightRange, const in float lightRadius) {
-    float linear = GetLightAttenuation_Linear(lightDist, lightRange);
-    float invSq = GetLightAttenuation_invSq(max(lightDist-lightRadius, 0.0), lightRadius);
+// float GetLightAttenuation(const in float lightDist, const in float lightRange, const in float lightRadius) {
+//     float linear = GetLightAttenuation_Linear(lightDist, lightRange);
+//     float invSq = GetLightAttenuation_invSq(max(lightDist-lightRadius, 0.0), lightRadius);
 
-    float f = saturate(lightDist / lightRange);
-    return lerp(invSq, linear, f);
-}
+//     float f = saturate(lightDist / lightRange);
+//     return lerp(invSq, linear, f);
+// }
 
-float4 projectSphereView(float3 center, float radius, float P00, float P11) {
-    float3 cr = center * radius;
-    float czr2 = center.z * center.z - radius * radius;
-    float2 v = sqrt(center.xy * center.xy + czr2);
+// float4 projectSphereView(float3 center, float radius, float P00, float P11) {
+//     float3 cr = center * radius;
+//     float czr2 = center.z * center.z - radius * radius;
+//     float2 v = sqrt(center.xy * center.xy + czr2);
 
-    float minx = (v.x * center.x - cr.z) / (v.x * center.z + cr.x);
-    float maxx = (v.x * center.x + cr.z) / (v.x * center.z - cr.x);
+//     float minx = (v.x * center.x - cr.z) / (v.x * center.z + cr.x);
+//     float maxx = (v.x * center.x + cr.z) / (v.x * center.z - cr.x);
 
-    float miny = (v.y * center.y - cr.z) / (v.y * center.z + cr.y);
-    float maxy = (v.y * center.y + cr.z) / (v.y * center.z - cr.y);
+//     float miny = (v.y * center.y - cr.z) / (v.y * center.z + cr.y);
+//     float maxy = (v.y * center.y + cr.z) / (v.y * center.z - cr.y);
 
-    float4 aabb = float4(minx * P00, miny * P11, maxx * P00, maxy * P11);
-    // clip space -> uv space
-    aabb = aabb * float4(0.5f, -0.5f, 0.5f, -0.5f) + float4(0.5f);
+//     float4 aabb = float4(minx * P00, miny * P11, maxx * P00, maxy * P11);
+//     // clip space -> uv space
+//     aabb = aabb * float4(0.5f, -0.5f, 0.5f, -0.5f) + float4(0.5f);
 
-    return aabb;
-}
+//     return aabb;
+// }
 
 float3 unprojectCorner(const in float screenPosX, const in float screenPosY) {
     float3 ndcPos = float3(screenPosX, screenPosY, 1.0) * 2.0 - 1.0;
@@ -149,6 +152,11 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
+    float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
+    float3 specular = imgSpecular[input.globalPos.xy].rgb;
+    uint2 normal_data = texNormalGB[input.globalPos.xy];
+    uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
+
     float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
     if (TAA_Enabled) texcoord -= scene.taa_jitter;
 
@@ -156,16 +164,22 @@ void applyPointLights(ComputeInput input) {
     float3 viewPos = project(ap.camera.projectionInv, clipPos);
     float3 localPos = mul3(ap.camera.viewInv, viewPos);
 
-    uint2 normals = texNormalGB[input.globalPos.xy];
-    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
+    float3 viewDir = -normalize(localPos);
+
+    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normal_data.r).xyz * 2.0 - 1.0);
+    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normal_data.g).xyz * 2.0 - 1.0);
+    float4 specular_data = unpackUnorm4x8ToFloat(mat_light_data.r);
+
+    float roughness = mat_roughness(specular_data.r);
+    float f0_metal = mat_f0_metal(specular_data.g);
+
+    float roughL = roughness * roughness;
 
     const float offsetBias = 0.06;
     const float normalBias = 0.12;
     float3 localSamplePos = normalBias * geo_normal + localPos;
 
-    float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
-    float3 specular = imgSpecular[input.globalPos.xy].rgb;
+    float NoVm = max(dot(tex_normal, viewDir), 0.0);
 
     uint total = counter.load();
     // float hue = lerp(0.75, 0.0, total / 256.0);
@@ -187,14 +201,24 @@ void applyPointLights(ComputeInput input) {
         if (lightAtt < EPSILON) continue;
 
         float3 lightColor = RgbToLinear(block.lightColor.rgb);
-        lightColor *= saturate(lightRange / 15.0);
-        float NoLm = max(dot(tex_normal, lightDir), 0.0);
+        lightColor *= saturate(lightRange / 15.0) * BLOCK_LUX;
 
         float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist + offsetBias);
         float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
 
-        diffuse += NoLm * lightAtt * shadow * BLOCK_LUX * lightColor;
-        //specular += 0.0;
+        float3 H = normalize(lightDir + viewDir);
+        float NoLm = max(dot(tex_normal, lightDir), 0.0);
+        float NoHm = max(dot(tex_normal, H), 0.0);
+        float LoHm = max(dot(lightDir, H), 0.0);
+        float VoHm = max(dot(viewDir, H), 0.0);
+
+        float D = SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
+        diffuse += NoLm * lightAtt * shadow * D * lightColor;
+
+        //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
+        float F_VoH = F_schlickRough(VoHm, f0_metal, roughL);
+        float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
+        specular += NoLm * shadow * S * lightColor;
     }
 
     imgDiffuse[input.globalPos.xy] = float4(diffuse, 1.0);
