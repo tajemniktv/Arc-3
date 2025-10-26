@@ -4,7 +4,7 @@ import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 let TAA_ENABLED : boolean;
 let ENABLE_BLOOM : boolean;
 let PointLight_Enabled: boolean;
-const DEBUG_MATERIAL = 2;
+const DEBUG_MATERIAL = -1;
 const DEBUG_HISTOGRAM = true;
 const Debug_WhiteWorld = false;
 

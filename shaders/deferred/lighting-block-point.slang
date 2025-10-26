@@ -149,7 +149,7 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float2 texcoord = input.globalPos.xy / float2(ap.game.screenSize);
+    float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
     if (TAA_Enabled) texcoord -= scene.taa_jitter;
 
     float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
