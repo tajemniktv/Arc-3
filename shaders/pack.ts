@@ -256,6 +256,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     if (options.Lighting_Point_Enabled) {
         pipeline.createObjectShader('shadow-point', Usage.POINT)
             .location("objects/shadow_point")
+            .exportBool('EmissionMask', options.Lighting_Point_EmissionMask)
             .compile();
     }
     

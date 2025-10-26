@@ -12,6 +12,9 @@ screen.LIGHTING_POINT=Point Lights
 
 option.LIGHTING_POINT_ENABLED=Enabled
 
+option.LIGHTING_POINT_EMISSION_MASK=Emission Mask
+option.LIGHTING_POINT_EMISSION_MASK.comment=Only allows light to pass through emissive parts of blocks. Requires a PBR resource pack!
+
 option.LIGHTING_POINT_MAXCOUNT=Max Light Count
 
 option.LIGHTING_POINT_RESOLUTION=Resolution

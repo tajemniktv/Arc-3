@@ -1,8 +1,9 @@
 import aperture;
 import lib.common;
+import lib.material;
 
 
-extern static const bool LIGHTING_SHADOW_EMISSION_MASK = false;
+extern static const bool EmissionMask;
 
 struct VertexOutput {
     float4 position : SV_Position;
@@ -43,23 +44,16 @@ VertexOutput vertexMain(Vertex input) {
 }
 
 
-// #include "/lib/material/material.glsl"
-float mat_emission(const in float4 specularData) {
-    return 0.0; // TODO
-}
-
 [[shader("fragment")]]
 float fragmentMain(VertexOutput input) : SV_Depth {
-    float LOD = 0.0;//albedoTex.CalculateLevelOfDetail(input.uv);
-
     float finalDist = length(input.modelPos);
     float fragDepth = (finalDist - ap.lights.nearPlane) / (ap.lights.farPlane - ap.lights.nearPlane);
 
-    float alpha = albedoTex.SampleLevel(input.uv, LOD).a;
+    float alpha = albedoTex.SampleLevel(input.uv, 0).a;
 
-    if (LIGHTING_SHADOW_EMISSION_MASK) {
+    if (EmissionMask) {
         if (all(clamp(input.modelPos, -0.5, 0.5) == input.modelPos)) {
-            float4 specularData = specularTex.SampleLevel(input.uv, LOD);
+            float4 specularData = specularTex.SampleLevel(input.uv, 0);
             float emission = mat_emission(specularData);
             if (emission > 0.0) alpha = 0.0;
         }

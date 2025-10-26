@@ -6,6 +6,7 @@ export function setupOptions() {
         .add(new Page('LIGHTING')
             .add(new Page('LIGHTING_POINT')
                 .add(asBool('LIGHTING_POINT_ENABLED', true, true))
+                .add(asBool('LIGHTING_POINT_EMISSION_MASK', false, true))
                 .add(asIntRange('LIGHTING_POINT_MAXCOUNT', 128, 4, 256, 4, true))
                 .add(asInt('LIGHTING_POINT_RESOLUTION', 32, 64, 128, 256, 512).needsReload(true).build(128))
                 .build())
