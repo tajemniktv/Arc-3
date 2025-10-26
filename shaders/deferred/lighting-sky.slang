@@ -21,8 +21,10 @@ Sampler2D<float> mainDepthTex;
 
 struct SurfaceData {
     float3 normal;
-    float f0_metal;
+    float3 f0;
     float roughL;
+    float3 tint;
+    // bool is_metal;
 
     // float3 viewDir;
     // float NoVm;
@@ -43,13 +45,14 @@ void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData l
     float LoHm = max(dot(light.localDir, H), 0.0);
     float VoHm = max(dot(viewDir, H), 0.0);
 
-    float D = SampleLightDiffuse(NoVm, NoLm, LoHm, surface.roughL);
-    diffuse += NoLm * D * transmit * light.color;
-
     //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
-    float F_VoH = F_schlickRough(VoHm, surface.f0_metal, surface.roughL);
+    float3 F_VoH = F_schlickRough(VoHm, surface.f0, surface.roughL);
+
+    float D = SampleLightDiffuse(NoVm, NoLm, LoHm, surface.roughL);
+    diffuse += NoLm * D * transmit * light.color * saturate(1.0 - F_VoH);
+
     float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, surface.roughL);
-    specular += NoLm * S * transmit * light.color;
+    specular += NoLm * S * transmit * light.color * surface.tint;
 }
 
 
@@ -75,13 +78,14 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 localPos = mul3(ap.camera.viewInv, viewPos);
     float3 viewLocalDir = -normalize(localPos);
 
-    //float4 albedo = texAlbedoGB[uv];
+    float4 colorData = texAlbedoGB[uv];
     uint2 normalData = texNormalGB[uv];
     uint2 matLightData = texMatLightGB[uv];
 
     float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
+    float3 albedo = RgbToLinear(colorData.rgb);
     float roughness = mat_roughness(specularData.r);
-    // float f0_metal = 
+    float f0_metal = mat_f0_metal(specularData.g);
 
     // float roughL = roughness*roughness;
 
@@ -95,13 +99,15 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     SurfaceData surface;
     surface.normal = tex_normal;
-    surface.f0_metal = mat_f0_metal(specularData.g);
     surface.roughL = roughness*roughness;
+    bool is_metal = f0_metal > (229.5/255.0);
+    surface.f0 = is_metal ? albedo : f0_metal;
+    surface.tint = is_metal ? albedo : 1.0;
 
     SkyLightData light;
+    light.skyPos = getSkyPosition(localPos);
 
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
-    light.skyPos = getSkyPosition(localPos);
 
     int shadowCascade;
     float3 shadowPos;
@@ -124,6 +130,11 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     output.diffuse = output.diffuse / PI * shadow + ambient;
     output.specular = output.specular * shadow;
+
+    if (is_metal) output.diffuse *= surface.roughL;
+
+    // float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
+    // output.diffuse *= 1.0 - F_NoV;
 
     return output;
 }

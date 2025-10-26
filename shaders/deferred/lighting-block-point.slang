@@ -154,6 +154,8 @@ void applyPointLights(ComputeInput input) {
 
     float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
     float3 specular = imgSpecular[input.globalPos.xy].rgb;
+
+    float4 colorData = texAlbedoGB[input.globalPos.xy];
     uint2 normal_data = texNormalGB[input.globalPos.xy];
     uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
 
@@ -173,6 +175,7 @@ void applyPointLights(ComputeInput input) {
     float roughness = mat_roughness(specular_data.r);
     float f0_metal = mat_f0_metal(specular_data.g);
 
+    float3 albedo = RgbToLinear(colorData.rgb);
     float roughL = roughness * roughness;
 
     const float offsetBias = 0.06;
@@ -180,6 +183,7 @@ void applyPointLights(ComputeInput input) {
     float3 localSamplePos = normalBias * geo_normal + localPos;
 
     float NoVm = max(dot(tex_normal, viewDir), 0.0);
+    float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
 
     uint total = counter.load();
     // float hue = lerp(0.75, 0.0, total / 256.0);
@@ -212,13 +216,16 @@ void applyPointLights(ComputeInput input) {
         float LoHm = max(dot(lightDir, H), 0.0);
         float VoHm = max(dot(viewDir, H), 0.0);
 
+        shadow *= NoLm * lightAtt;
+
         float D = SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
-        diffuse += NoLm * lightAtt * shadow * D * lightColor;
+        diffuse += shadow * D * lightColor;
 
         //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
-        float F_VoH = F_schlickRough(VoHm, f0_metal, roughL);
+        float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
+        
         float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
-        specular += NoLm * shadow * S * lightColor;
+        specular += shadow * S * lightColor;
     }
 
     imgDiffuse[input.globalPos.xy] = float4(diffuse, 1.0);
