@@ -207,7 +207,7 @@ void applyPointLights(ComputeInput input) {
         float3 lightColor = RgbToLinear(block.lightColor.rgb);
         lightColor *= saturate(lightRange / 15.0) * BLOCK_LUX;
 
-        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist + offsetBias);
+        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
         float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
 
         float3 H = normalize(lightDir + viewDir);

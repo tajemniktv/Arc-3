@@ -1,4 +1,6 @@
 export class Options {
+    get Material_Format(): number {return getIntSetting('MATERIAL_FORMAT');}
+
     get Lighting_Point_Enabled(): boolean {return getBoolSetting('LIGHTING_POINT_ENABLED');}
     get Lighting_Point_EmissionMask(): boolean {return getBoolSetting('LIGHTING_POINT_EMISSION_MASK');}
     get Lighting_Point_MaxCount(): number {return getIntSetting('LIGHTING_POINT_MAXCOUNT');}

@@ -1,10 +1,11 @@
 import lib.common;
 
-extern static const int MATERIAL_NORMAL_FORMAT = MAT_LABPBR;
-extern static const int MATERIAL_METALS_FORMAT = MAT_LABPBR;
-extern static const int MATERIAL_EMISSION_FORMAT = MAT_LABPBR;
-extern static const int MATERIAL_POROSITY_FORMAT = MAT_LABPBR;
-extern static const int MATERIAL_SSS_FORMAT = MAT_LABPBR;
+extern static const int MATERIAL_FORMAT;
+extern static const int MATERIAL_NORMAL_FORMAT = MATERIAL_FORMAT;
+extern static const int MATERIAL_METALS_FORMAT = MATERIAL_FORMAT;
+extern static const int MATERIAL_EMISSION_FORMAT = MATERIAL_FORMAT;
+extern static const int MATERIAL_POROSITY_FORMAT = MATERIAL_FORMAT;
+extern static const int MATERIAL_SSS_FORMAT = MATERIAL_FORMAT;
 
 static const int MAT_LABPBR = 2;
 static const int MAT_OLDPBR = 1;

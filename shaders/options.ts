@@ -1,7 +1,7 @@
 export function setupOptions() {
     return new Page('main')
         .add(new Page('MATERIAL')
-            .add(asInt('MATERIAL_FORMAT', 0, 1, 2).needsReload(true).build(2))
+            .add(asInt('MATERIAL_FORMAT', 0, 1, 2).needsReload(true).build(0))
             .build())
         .add(new Page('LIGHTING')
             .add(new Page('LIGHTING_POINT')
