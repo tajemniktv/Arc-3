@@ -7,6 +7,7 @@ import lib.material;
 import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
+import lib.sky.sample_view;
 import lib.shadow;
 
 extern static const bool TAA_Enabled;
@@ -52,7 +53,7 @@ void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData l
     diffuse += NoLm * D * transmit * light.color * saturate(1.0 - F_VoH);
 
     float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, surface.roughL);
-    specular += NoLm * S * transmit * light.color * surface.tint;
+    specular += NoLm * S * transmit * light.color;// * surface.tint;
 }
 
 
@@ -131,10 +132,22 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.diffuse = output.diffuse / PI * shadow + ambient;
     output.specular = output.specular * shadow;
 
-    if (is_metal) output.diffuse *= surface.roughL;
+    if (mat_isMetal(f0_metal)) output.diffuse *= surface.roughL;
 
-    // float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
-    // output.diffuse *= 1.0 - F_NoV;
+    // TODO: sky reflections
+    float3 skyPos = getSkyPosition(localPos);
+    float3 fragViewDir = normalize(viewPos);
+    float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);
+    float3 reflectViewDir = reflect(fragViewDir, viewNormal);
+    float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
+    reflectLocalDir = normalize(reflectLocalDir);
+
+    float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene.SunLocalDir);
+    float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
+    output.specular += F_NoV * skyColor * ((1.0 - surface.roughL) * lmcoord_y);
+    output.diffuse *= 1.0 - F_NoV;
+
+    output.specular *= surface.tint;
 
     return output;
 }

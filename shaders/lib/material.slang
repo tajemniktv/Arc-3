@@ -118,6 +118,18 @@ float mat_metalness(const in float f0_metal) {
     }
 }
 
+bool mat_isMetal(const in float f0_metal) {
+    if (MATERIAL_METALS_FORMAT == MAT_LABPBR) {
+        return f0_metal > (229.5/255.0);
+    }
+    else if (MATERIAL_METALS_FORMAT == MAT_OLDPBR) {
+        return f0_metal > 0.5;
+    }
+    else {
+        return false;
+    }
+}
+
 float mat_occlusion(const in float data) {
     if (MATERIAL_NORMAL_FORMAT == MAT_LABPBR) {
         return data;

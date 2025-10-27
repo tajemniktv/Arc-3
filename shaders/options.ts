@@ -10,6 +10,8 @@ export function setupOptions() {
                 .add(asIntRange('LIGHTING_POINT_MAXCOUNT', 128, 4, 256, 4, true))
                 .add(asInt('LIGHTING_POINT_RESOLUTION', 32, 64, 128, 256, 512).needsReload(true).build(128))
                 .build())
+            .add(EMPTY)
+            .add(asBool('LIGHTING_COLOR_CANDLES', true, true))
             .build())
         .add(new Page('POST')
             .add(asBool('POST_BLOOM_ENABLED', true, true))

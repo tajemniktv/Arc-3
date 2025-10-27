@@ -152,8 +152,8 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float3 diffuse = imgDiffuse[input.globalPos.xy].rgb;
-    float3 specular = imgSpecular[input.globalPos.xy].rgb;
+    float3 diffuse = 0.0;
+    float3 specular = 0.0;
 
     float4 colorData = texAlbedoGB[input.globalPos.xy];
     uint2 normal_data = texNormalGB[input.globalPos.xy];
@@ -227,6 +227,11 @@ void applyPointLights(ComputeInput input) {
         float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
         specular += shadow * S * lightColor;
     }
+
+    if (mat_isMetal(f0_metal)) diffuse *= roughL;
+
+    diffuse += imgDiffuse[input.globalPos.xy].rgb;
+    specular += imgSpecular[input.globalPos.xy].rgb;
 
     imgDiffuse[input.globalPos.xy] = float4(diffuse, 1.0);
     imgSpecular[input.globalPos.xy] = float4(specular, 1.0);
