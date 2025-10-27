@@ -90,7 +90,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
     if (MATERIAL_FORMAT != MAT_NONE) {
         tex_normal = mat_normal(normalData.rgb);
         float3 tangent = normalize(input.tangent.xyz);
-        if (geo_normal.y < -0.99) tangent = -tangent;
+        //if (geo_normal.y < -0.99) tangent = -tangent;
         float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
         tex_normal = normalize(mul(tex_normal, TBN));
     }
