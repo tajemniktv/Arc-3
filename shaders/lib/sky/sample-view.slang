@@ -27,8 +27,8 @@ float3 sampleSkyView(const in float3 skyPos, const in float3 rayDir, const in fl
     // Non-linear mapping of altitude angle. See Section 5.3 of the paper.
     float v = 0.5 + 0.5*sign(altitudeAngle) * sqrt(abs(altitudeAngle) * 2.0/PI);
     float2 uv = float2(azimuthAngle / (2.0*PI), v);
-    // uv *= skyLUTRes;
-    // uv /= iChannelResolution[1].xy;
     
+    uv.y = clamp(uv.y, (0.5/skyViewDimensions.y), ((skyViewDimensions.y-1.0)/skyViewDimensions.y));
+
     return texSkyView.SampleLevel(uv, 0);
 }

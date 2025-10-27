@@ -24,7 +24,7 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
     up = normalize(cross(normal, right));
 
     // float3x3 tbn = float3x3(right, up, normal);
-    float3x3 tbn = float3x3(normal, up, right);
+    float3x3 tbn = float3x3(right, up, normal);
 
     float3 skyPos = getSkyPosition(0.0);
 
@@ -52,7 +52,7 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
 
             // tangent space to world
             //tangentSample = vec3(0.0, 0.0, 1.0);
-            float3 sampleVec = normalize(mul(tbn, tangentSample));
+            float3 sampleVec = normalize(mul(tangentSample, tbn));
 
             // vec2 uv = DirectionToUV(sampleVec);
             // vec3 skyColor = textureLod(texSkyView, uv, 0).rgb;
@@ -82,11 +82,12 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
 
 [[shader("fragment")]]
 float4 bakeSkyIrradiance(float2 pos : SV_Position) : SV_Target0 {
-    const uint2 viewportDimensions = 32;
-    float2 uv = pos / viewportDimensions;
+    float2 uv = pos / float2(skyIrradianceDimensions);
 
     float3 viewDir = DirectionFromUV(uv);
-    float3 irradiance = CalculateIrradiance(pos, viewDir);
+    float3 irradiance = CalculateIrradiance(pos, viewDir) * PI;
 
-    return float4(irradiance * PI, 0.1);
+    // irradiance = float3(viewDir * 0.5 + 0.5);
+
+    return float4(irradiance, 0.1);
 }

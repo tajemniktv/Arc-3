@@ -70,5 +70,7 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
         }
     }
 
+    color.rgb = RgbToLinear(color.rgb);
+
     return color;
 }

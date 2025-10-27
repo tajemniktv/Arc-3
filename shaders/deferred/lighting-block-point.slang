@@ -1,7 +1,7 @@
 import aperture;
 import buffers.scene;
 import lib.common;
-import lib.material;
+import lib.material.pbr;
 import lib.light.brdf;
 import lib.light.fresnel;
 import lib.sampling.depth;
@@ -228,7 +228,7 @@ void applyPointLights(ComputeInput input) {
         specular += shadow * S * lightColor;
     }
 
-    if (mat_isMetal(f0_metal)) diffuse *= roughL;
+    if (mat_isMetal(f0_metal)) diffuse *= roughness;
 
     diffuse += imgDiffuse[input.globalPos.xy].rgb;
     specular += imgSpecular[input.globalPos.xy].rgb;

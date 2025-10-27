@@ -6,6 +6,9 @@ import lib.hg;
 
 ConstantBuffer<SettingsBuffer> settings;
 
+static const uint2 skyViewDimensions = 256;
+static const uint2 skyIrradianceDimensions = 32;
+
 // Units are in megameters.
 static const float groundRadiusMM = 6.371;
 static const float atmosphereRadiusMM = 0.100 + groundRadiusMM;

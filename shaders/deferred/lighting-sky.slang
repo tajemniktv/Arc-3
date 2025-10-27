@@ -3,7 +3,7 @@ import buffers.scene;
 import lib.common;
 import lib.light.fresnel;
 import lib.light.brdf;
-import lib.material;
+import lib.material.pbr;
 import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
@@ -132,7 +132,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.diffuse = output.diffuse / PI * shadow + ambient;
     output.specular = output.specular * shadow;
 
-    if (mat_isMetal(f0_metal)) output.diffuse *= surface.roughL;
+    if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
 
     // TODO: sky reflections
     float3 skyPos = getSkyPosition(localPos);
@@ -144,7 +144,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene.SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
-    output.specular += F_NoV * skyColor * ((1.0 - surface.roughL) * lmcoord_y);
+    output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
     output.diffuse *= 1.0 - F_NoV;
 
     output.specular *= surface.tint;

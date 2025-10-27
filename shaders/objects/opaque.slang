@@ -2,33 +2,13 @@ import aperture;
 import buffers.scene;
 import lib.common;
 import lib.sampling.lmcoord;
-import lib.material;
+import lib.material.pbr;
 import lib.tbn;
 
 extern static const bool disableFog;
 extern static const bool TAA_Enabled;
 
 ConstantBuffer<SceneBuffer> scene;
-Sampler2D shit;
-
-
-// Hack for bad tangent; stolen from Kappa, stolen from MollyVX
-float3x3 manualTBN(float3 pos, float3 normal, float2 uv) {
-    uv *= float2(16000);//albedoTex.GetDimensions();
-
-    float3 deltaPosX = ddx(pos);
-    float3 deltaPosY = ddy(pos);
-    float2 deltaUVX = ddx(uv);
-    float2 deltaUVY = ddy(uv);
-
-    float3 deltaPosXPerp   = cross(normal, deltaPosX);
-    float3 deltaPosYPerp   = cross(deltaPosY, normal);
-
-    float3 tangent   = normalize(deltaPosYPerp * deltaUVX.x + deltaPosXPerp * deltaUVY.x);
-    float3 bitangent = normalize(deltaPosYPerp * deltaUVX.y + deltaPosXPerp * deltaUVY.y);
-
-    return float3x3(tangent, bitangent, normal);
-}
 
 
 struct VertexOutput {
@@ -110,9 +90,8 @@ FragmentOutput fragmentMain(VertexOutput input) {
     if (MATERIAL_FORMAT != MAT_NONE) {
         tex_normal = mat_normal(normalData.rgb);
         float3 tangent = normalize(input.tangent.xyz);
+        if (geo_normal.y < -0.99) tangent = -tangent;
         float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
-        //TBN = transpose(TBN);
-        // float3x3 TBN = manualTBN(input.localPos, geo_normal, input.uv);
         tex_normal = normalize(mul(tex_normal, TBN));
     }
 

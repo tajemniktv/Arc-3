@@ -5,7 +5,9 @@ import lib.sampling.ERP;
 Sampler2D<float3> texSkyIrradiance;
 
 float3 sampleSkyIrradiance(const in float3 localNormal) {
-    float2 skyIrradianceCoord = DirectionToUV(localNormal);
-    return texSkyIrradiance.SampleLevel(skyIrradianceCoord, 0);// * BufferLumScale;
-    //return (SKY_AMBIENT * (lmcoord_y*lmcoord_y)) * (skyIrradiance + Sky_MinLight);
+    float2 uv = DirectionToUV(localNormal);
+
+    uv.y = clamp(uv.y, (0.5/skyIrradianceDimensions.y), ((skyIrradianceDimensions.y-0.5)/skyIrradianceDimensions.y));
+
+    return texSkyIrradiance.SampleLevel(uv, 0);
 }

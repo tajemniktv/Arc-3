@@ -1,5 +1,7 @@
-float3x3 GetTBN(const in float3 normal, const in float3 tangent, const in float tangentW) {
+float3x3 GetTBN(const in float3 normal, in float3 tangent, const in float tangentW) {
+    //tangent = -tangent;
     float3 binormal = normalize(cross(tangent, normal)) * sign(tangentW);
+    //if (tangentW < 0.5) binormal = -binormal;
     return float3x3(tangent, binormal, normal);
 }
 

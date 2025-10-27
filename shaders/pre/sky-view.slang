@@ -64,8 +64,7 @@ float3 raymarchScattering(float3 pos, float3 rayDir, float3 sunDir, float tMax, 
 
 [[shader("fragment")]]
 float3 bakeSkyView(float2 pos : SV_Position) : SV_Target0 {
-    const uint2 viewportDimensions = 256;
-    float2 uv = pos / viewportDimensions;
+    float2 uv = pos / skyViewDimensions;
 
     float azimuthAngle = (uv.x - 0.5) * 2.0*PI;
 
