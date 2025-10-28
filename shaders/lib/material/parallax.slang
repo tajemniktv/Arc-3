@@ -1,16 +1,17 @@
 import aperture;
 import lib.common;
 import lib.sampling.atlas;
-// import lib.sampling.linear;
+import lib.sampling.linear;
 
-extern static const bool MATERIAL_PARALLAX_OPTIMIZE = false;
-extern static const int MATERIAL_PARALLAX_SAMPLES = 32;
-extern static const float MATERIAL_PARALLAX_DEPTH = 0.25;
+extern static const bool Parallax_Enabled;
+extern static const int Parallax_SampleCount;
+extern static const float Parallax_Depth;
+extern static const int Parallax_Type;
+extern static const bool Parallax_Optimize;
+
 extern static const float MATERIAL_PARALLAX_MAXDIST = 48.0;
-extern static const int MATERIAL_PARALLAX_TYPE = POM_TYPE_NONE;
 
 static const float ParallaxSharpThreshold = (1.5/255.0);
-//const float ParallaxDepthF = MATERIAL_PARALLAX_DEPTH * 0.01;
 static const int POM_TYPE_NONE = 0;
 static const int POM_TYPE_SHARP = 1;
 static const int POM_TYPE_SMOOTH = 2;
@@ -21,7 +22,7 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
     normalTex.GetDimensions(0, atlasSize.x, atlasSize.y);
 
     float maxTexDepth = 1.0;
-    if (MATERIAL_PARALLAX_OPTIMIZE) {
+    if (Parallax_Optimize) {
         float2 atlasCoord = atlasBounds.GetAtlasCoord(texcoord);
 
         float2 atlasSize_2;
@@ -30,50 +31,46 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
         maxTexDepth = sqrt(maxTexDepth);
     }
 
-    float ParallaxDepthF = MATERIAL_PARALLAX_DEPTH * 0.01 * maxTexDepth;
-    float2 stepCoord = tanViewDir.xy * ParallaxDepthF / (fma(tanViewDir.z, MATERIAL_PARALLAX_SAMPLES, 1.0));
-    float stepDepth = maxTexDepth / MATERIAL_PARALLAX_SAMPLES;
-
-    // if (MATERIAL_PARALLAX_TYPE == POM_TYPE_SMOOTH) {
-        float2 atlasPixelSize = 1.0 / atlasSize;
-        float prevTexDepth;
-    // }
+    float ParallaxDepthF = Parallax_Depth * maxTexDepth;
+    float2 stepCoord = tanViewDir.xy * ParallaxDepthF / (fma(tanViewDir.z, Parallax_SampleCount, 1.0));
+    float stepDepth = maxTexDepth / Parallax_SampleCount;
 
     float viewDistF = 1.0 - saturate(viewDist / MATERIAL_PARALLAX_MAXDIST);
-    float maxSampleCount = fma(viewDistF, MATERIAL_PARALLAX_SAMPLES, 0.5);
+    float maxSampleCount = fma(viewDistF, Parallax_SampleCount, 0.5);
 
     float2 localSize = atlasSize * atlasBounds.CoordSize;
     if (all(localSize > EPSILON))
         stepCoord.y *= localSize.x / localSize.y;
 
     int i;
+    float prevTexDepth;
     texDepth = 1.0;
     float depthDist = 1.0;
-    for (i = 0; i < MATERIAL_PARALLAX_SAMPLES; i++) {
+    for (i = 0; i < Parallax_SampleCount; i++) {
         if (i > maxSampleCount || depthDist < (1.0/255.0)) break;
 
-        if (MATERIAL_PARALLAX_TYPE == POM_TYPE_SMOOTH) {
+        if (Parallax_Type == POM_TYPE_SMOOTH) {
             prevTexDepth = texDepth;
         }
 
         float2 localTraceCoord = fma(float2(i), -stepCoord, texcoord);
 
-        // if (MATERIAL_PARALLAX_TYPE == POM_TYPE_SMOOTH) {
-        //     float2 uv[4];
-        //     float2 atlasTileSize = atlasBounds.CoordSize * atlasSize;
-        //     float2 f = GetLinearCoords(localTraceCoord, atlasTileSize, uv);
+        if (Parallax_Type == POM_TYPE_SMOOTH) {
+            float2 uv[4];
+            float2 atlasTileSize = atlasBounds.CoordSize * atlasSize;
+            float2 f = GetLinearCoords(localTraceCoord, atlasTileSize, uv);
 
-        //     uv[0] = atlasBounds.GetAtlasCoord(uv[0]);
-        //     uv[1] = atlasBounds.GetAtlasCoord(uv[1]);
-        //     uv[2] = atlasBounds.GetAtlasCoord(uv[2]);
-        //     uv[3] = atlasBounds.GetAtlasCoord(uv[3]);
+            uv[0] = atlasBounds.GetAtlasCoord(uv[0]);
+            uv[1] = atlasBounds.GetAtlasCoord(uv[1]);
+            uv[2] = atlasBounds.GetAtlasCoord(uv[2]);
+            uv[3] = atlasBounds.GetAtlasCoord(uv[3]);
 
-        //     texDepth = TextureLodLinear(normalTex, uv, LOD, f, 3);
-        // }
-        // else {
+            texDepth = normalTex.SampleLevelLinear(uv, LOD, f, 3);
+        }
+        else {
             float2 traceAtlasCoord = atlasBounds.GetAtlasCoord(localTraceCoord);
             texDepth = normalTex.SampleLevel(traceAtlasCoord, LOD).a;
-        // }
+        }
 
         depthDist = 1.0 - fma(i, stepDepth, texDepth);
     }
@@ -81,7 +78,7 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
     i = max(i - 1, 0);
     float pI = max(i - 1, 0);
 
-    if (MATERIAL_PARALLAX_TYPE == POM_TYPE_SMOOTH) {
+    if (Parallax_Type == POM_TYPE_SMOOTH) {
         float2 currentTraceOffset = texcoord - i * stepCoord;
         float currentTraceDepth = max(1.0 - i * stepDepth, 0.0);
         float2 prevTraceOffset = texcoord - pI * stepCoord;
@@ -98,7 +95,7 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
         traceDepth.z = max(1.0 - pI * stepDepth, 0.0);
     }
 
-    if (MATERIAL_PARALLAX_TYPE == POM_TYPE_SMOOTH) {
+    if (Parallax_Type == POM_TYPE_SMOOTH) {
         return atlasBounds.GetAtlasCoord(traceDepth.xy);
     }
     else {

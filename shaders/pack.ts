@@ -63,7 +63,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     pipeline.setGlobalExport(pipeline.createExportList()
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
-        .addBool('Parallax_Enabled', false)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)
@@ -272,6 +271,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const shaderBasicOpaque = pipeline.createObjectShader("basic-opaque", Usage.BASIC)
         .location("objects/opaque")
+        .exportBool('Parallax_Enabled', options.Material_Parallax_Enabled)
+        .exportInt('Parallax_Type', options.Material_Parallax_Type)
+        .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
+        .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
+        .exportBool('Parallax_Optimize', options.Material_Parallax_Optimize)
         .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
         .target(1, texNormalGB).blendOff(1)
         .target(2, texMatLightGB).blendOff(2);

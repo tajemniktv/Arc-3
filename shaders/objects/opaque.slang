@@ -7,7 +7,6 @@ import lib.material.pbr;
 import lib.material.parallax;
 import lib.tbn;
 
-extern static const bool Parallax_Enabled;
 extern static const bool TAA_Enabled;
 
 ConstantBuffer<SceneBuffer> scene;
@@ -23,7 +22,6 @@ struct VertexOutput {
     float occlusion;
     float4 tangent;
 
-    // TODO: only needed for parallax
     float3 localPos;
     float3 tangentViewPos;
     float2 atlasCoordMin;
@@ -38,7 +36,9 @@ VertexOutput vertexMain(Vertex input) {
     float3 viewPos = mul3(input.viewMatrix(), modelPos);
     output.position = mul(input.projectionMatrix(), float4(viewPos, 1.0));
 
-    output.localPos = mul3(ap.camera.viewInv, viewPos);
+    if (Parallax_Enabled) {
+        output.localPos = mul3(ap.camera.viewInv, viewPos);
+    }
 
     output.uv = input.uv();
     output.color = input.color();
@@ -69,16 +69,17 @@ VertexOutput vertexMain(Vertex input) {
     }
 
     if (Parallax_Enabled) {
-        // if (let midCoord = input.midCoord()) {
-        //     AtlasBounds atlas = GetAtlasBounds(output.uv, midCoord);
-        //     output.atlasCoordMin = atlas.CoordMin;
-        //     output.atlasCoordSize = atlas.CoordSize;
-        // }
+        if (let midCoord = input.midCoord()) {
+            AtlasBounds atlas;
+            atlas.Populate(output.uv, midCoord);
+            output.atlasCoordMin = atlas.CoordMin;
+            output.atlasCoordSize = atlas.CoordSize;
+        }
 
-        float3x3 matViewTBN = GetTBN(viewNormal, viewTangent, output.tangent.w);
+        float3x3 TBN = GetTBN(viewNormal, viewTangent, output.tangent.w);
 
         float3 viewPos = mul3(ap.camera.view, output.localPos);
-        output.tangentViewPos = mul(matViewTBN, viewPos.xyz); // TODO: this might be backwards!
+        output.tangentViewPos = mul(TBN, viewPos.xyz); // TODO: this might be backwards!
     }
 
     if (TAA_Enabled) {
@@ -101,19 +102,18 @@ FragmentOutput fragmentMain(VertexOutput input) {
     float2 uv = input.uv;
     float LOD = albedoTex.CalculateLevelOfDetail(uv);
 
+    AtlasBounds atlas;
+    float3 tanViewDir;
+    float texDepth = 1.0;
+    float3 traceCoordDepth = 1.0;
+    bool skipParallax = false;
     if (Parallax_Enabled) {
-        float texDepth = 1.0;
-        float3 traceCoordDepth = 1.0;
-
         float viewDist = length(input.localPos);
-        float3 tanViewDir = normalize(input.tangentViewPos);
-        bool skipParallax = false;
+        tanViewDir = normalize(input.tangentViewPos);
 
         if (!skipParallax && viewDist < MATERIAL_PARALLAX_MAXDIST) {
-            AtlasBounds atlas;
             atlas.CoordMin = input.atlasCoordMin;
             atlas.CoordSize = input.atlasCoordSize;
-
 
             float2 localCoord = atlas.GetLocalCoord(uv);
             uv = GetParallaxCoord(localCoord, int(LOD), atlas, tanViewDir, viewDist, texDepth, traceCoordDepth);
@@ -131,8 +131,18 @@ FragmentOutput fragmentMain(VertexOutput input) {
 
     if (MATERIAL_FORMAT != MAT_NONE) {
         tex_normal = mat_normal(normalData.rgb);
+
+        if (Parallax_Enabled && !skipParallax && Parallax_Type == POM_TYPE_SHARP) {
+            float depthDiff = max(texDepth - traceCoordDepth.z, 0.0);
+
+            if (depthDiff >= ParallaxSharpThreshold) {
+                tex_normal = GetParallaxSlopeNormal(uv, int(LOD), atlas, traceCoordDepth.z, tanViewDir);
+            }
+        }
+
         float3 tangent = normalize(input.tangent.xyz);
         float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
+
         tex_normal = normalize(mul(tex_normal, TBN));
     }
 
