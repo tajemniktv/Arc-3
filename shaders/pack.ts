@@ -33,8 +33,8 @@ export function configureRenderer(config: RendererConfig): void {
 
     config.shadow.enabled = true;
     config.shadow.cascades = 4;
-    config.shadow.resolution = 1024;
-    config.shadow.distance = 200;
+    config.shadow.resolution = options.Shadow_Resolution;
+    config.shadow.distance = options.Shadow_Distance;
 
     config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
     config.pointLight.resolution = options.Lighting_Point_Resolution;
