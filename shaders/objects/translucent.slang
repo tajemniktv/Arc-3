@@ -97,8 +97,9 @@ FragmentOutput fragmentMain(VertexOutput input) {
     GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
 
     float shadow = 1.0;
+    float sssDepth = 0.0;
     if (shadowCascade >= 0)
-        shadow = SampleShadow(shadowPos, shadowCascade);
+        shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
 
     float3 skyPos = getSkyPosition(input.localPos);
 
@@ -111,6 +112,8 @@ FragmentOutput fragmentMain(VertexOutput input) {
     float3 lightMoon = NoLm_moon * moonTransmit * scene.MoonColor;
 
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * input.occlusion;
+
+    // TODO: SSS
 
     float3 diffuse = (lightSun + lightMoon) / PI * shadow + ambient;
     float3 specular = float3(0.0);

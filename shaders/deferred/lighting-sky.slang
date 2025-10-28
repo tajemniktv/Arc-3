@@ -87,6 +87,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 albedo = RgbToLinear(colorData.rgb);
     float roughness = mat_roughness(specularData.r);
     float f0_metal = mat_f0_metal(specularData.g);
+    float sss = mat_sss(specularData.b);
 
     // float roughL = roughness*roughness;
 
@@ -116,10 +117,15 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
 
     float shadow = 1.0;
+    float sssDepth = 0.0;
     if (shadowCascade >= 0)
-        shadow = SampleShadow(shadowPos, shadowCascade);
+        shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
 
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+
+    // float NoLm = max(dot(tex_normal, scene.SkyLightLocalDir), 0.0);
+    // float3 sssFinal = sss * (1.0 - NoLm) * exp(-2.0 * (sssDepth+0.0)) * scene.SunColor;
+    // output.diffuse += sssFinal;
     
     light.color = scene.SunColor;
     light.localDir = scene.SunLocalDir;

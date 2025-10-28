@@ -4,7 +4,7 @@ import lib.common;
 
 extern static const float Scene_PostExposureMin;
 extern static const float Scene_PostExposureMax;
-extern static const float Scene_PostExposureRange = 9.6; // 9.6
+extern static const float Scene_PostExposureRange = 9.6;
 extern static const float Scene_PostExposureOffset;
 
 ConstantBuffer<SceneBuffer> scene;

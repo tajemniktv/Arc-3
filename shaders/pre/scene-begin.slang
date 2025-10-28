@@ -27,4 +27,6 @@ void beginScene() {
 
     scene[0].MoonColor = RgbToLinear(float3(0.92, 0.94, 1.0)) * MOON_LUMINANCE;
     scene[0].MoonLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.moonPosition));
+
+    scene[0].SkyLightLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.position));
 }

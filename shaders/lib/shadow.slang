@@ -3,6 +3,7 @@ import lib.common;
 
 extern static const uint SHADOW_CASCADE_COUNT = 4;
 
+Sampler2DArray solidShadowMap;
 Sampler2DArrayShadow solidShadowMapFiltered;
 
 
@@ -21,12 +22,15 @@ void GetShadowProjection(const in float3 shadowViewPos, out int cascadeIndex, ou
     }
 }
 
-float SampleShadow(in float3 shadowPos, const in int shadowCascade) {
+float SampleShadow(in float3 shadowPos, const in int shadowCascade, out float sssDepth) {
     if (any(saturate(shadowPos) != shadowPos)) return 1.0;
 
-    float zRange = ap.celestial.projectionInv[shadowCascade]._33;
-    const float bias = 0.02 / zRange;
-    
+    float zRange = -ap.celestial.projectionInv[shadowCascade]._33;
     float3 shadowCoord = float3(shadowPos.xy, shadowCascade);
-    return solidShadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z + bias).r;
+
+    float sampleDepth = solidShadowMap.Sample(shadowCoord).r;
+    sssDepth = max(shadowPos.z - sampleDepth, 0.0) * zRange;
+
+    const float bias = 0.02 / zRange;
+    return solidShadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z - bias).r;
 }

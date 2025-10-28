@@ -4,5 +4,6 @@ struct SceneBuffer {
     float3 SunLocalDir;
     float3 MoonColor;
     float3 MoonLocalDir;
+    float3 SkyLightLocalDir;
     float exposure;
 };
