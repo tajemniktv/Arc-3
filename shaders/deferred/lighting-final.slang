@@ -1,14 +1,16 @@
 import aperture;
 import buffers.scene;
+// import buffers.settings;
 import lib.common;
-import lib.sky.common;
-import lib.sky.sample_view;
-import lib.material;
+import lib.material.pbr;
+import lib.sky.sample_final;
 
 extern static const float BLOCK_LUX;
+extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 
 ConstantBuffer<SceneBuffer> scene;
+// ConstantBuffer<SettingsBuffer> settings;
 
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
@@ -26,14 +28,15 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
     float3 color;
     if (depth == 1.0) {
         float2 texcoord = pos / ap.game.screenSize;
+
+        if (TAA_Enabled) texcoord += scene.taa_jitter;
+
         float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
         float3 viewPos = project(ap.camera.projectionInv, clipPos);
         float3 localPos = mul3(ap.camera.viewInv, viewPos);
         float3 viewLocalDir = normalize(localPos);
 
-        float3 skyPos = getSkyPosition(0.0);
-
-        color = sampleSkyView(skyPos, viewLocalDir, scene.SunLocalDir);
+        color = sampleSkyFinal(localPos, viewLocalDir, false);
     }
     else {
         // uint2 normals = texNormalGB[uv];

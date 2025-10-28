@@ -7,7 +7,6 @@ import lib.material.pbr;
 import lib.material.parallax;
 import lib.tbn;
 
-extern static const bool disableFog;
 extern static const bool Parallax_Enabled;
 extern static const bool TAA_Enabled;
 

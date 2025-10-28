@@ -24,8 +24,8 @@ static const float mieAbsorptionBase = 4.4;
 
 static const float3 ozoneAbsorptionBase = float3(0.850, 1.581, 0.285);
 
-static const float moon_radiusKm = 1740.0;
-static const float moon_distanceKm = 20000.0;
+static const float SUN_LUMINANCE = 2000.0;//1.6e6;//1.6e9;
+static const float MOON_LUMINANCE = 2.8;
 
 static const float Sky_MinLight = 0.0;
 

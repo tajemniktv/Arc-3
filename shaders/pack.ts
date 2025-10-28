@@ -56,6 +56,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             break;
         default:
             WorldHasSky = true;
+            pipeline.importPNGTexture('texMoon', 'textures/moon.png', true, false);
             break;
     }
 
@@ -271,7 +272,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const shaderBasicOpaque = pipeline.createObjectShader("basic-opaque", Usage.BASIC)
         .location("objects/opaque")
-        .exportBool("disableFog", false)
         .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
         .target(1, texNormalGB).blendOff(1)
         .target(2, texMatLightGB).blendOff(2);
