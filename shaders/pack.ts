@@ -62,6 +62,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     pipeline.setGlobalExport(pipeline.createExportList()
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
+        .addBool('Parallax_Enabled', false)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)

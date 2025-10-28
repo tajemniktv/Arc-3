@@ -1,4 +1,3 @@
-// atlasBounds: [0]=position [1]=size
 struct AtlasBounds
 {
     float2 CoordMin;
@@ -13,10 +12,11 @@ struct AtlasBounds
     }
 };
 
-// float2 GetAtlasCoord(const in float2 localCoord, const in float2 atlasTileMin, const in float2 atlasTileSize) {
-//     return fract(localCoord) * atlasTileSize + atlasTileMin;
-// }
+AtlasBounds GetAtlasBounds(const in float2 texcoord, const in float2 midTexCoord) {
+    float2 coordNMid = texcoord - midTexCoord;
 
-// float2 GetLocalCoord(const in float2 atlasCoord, const in float2 atlasTileMin, const in float2 atlasTileSize) {
-//     return (atlasCoord - atlasTileMin) / atlasTileSize;
-// }
+    AtlasBounds bounds;
+    bounds.CoordMin = min(texcoord, midTexCoord - coordNMid);
+    bounds.CoordSize = abs(coordNMid) * 2.0;
+    return bounds;
+}

@@ -145,7 +145,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene.SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
     output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
-    output.diffuse *= 1.0 - F_NoV;
+    //output.diffuse *= 1.0 - F_NoV;
 
     output.specular *= surface.tint;
 

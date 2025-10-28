@@ -1,11 +1,14 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.sampling.atlas;
 import lib.sampling.lmcoord;
 import lib.material.pbr;
+import lib.material.parallax;
 import lib.tbn;
 
 extern static const bool disableFog;
+extern static const bool Parallax_Enabled;
 extern static const bool TAA_Enabled;
 
 ConstantBuffer<SceneBuffer> scene;
@@ -20,7 +23,12 @@ struct VertexOutput {
     float3 normal;
     float occlusion;
     float4 tangent;
-    // float3 localPos;
+
+    // TODO: only needed for parallax
+    float3 localPos;
+    float3 tangentViewPos;
+    float2 atlasCoordMin;
+    float2 atlasCoordSize;
 };
 
 [[shader("vertex")]]
@@ -31,7 +39,7 @@ VertexOutput vertexMain(Vertex input) {
     float3 viewPos = mul3(input.viewMatrix(), modelPos);
     output.position = mul(input.projectionMatrix(), float4(viewPos, 1.0));
 
-    // output.localPos = mul3(ap.camera.viewInv, viewPos);
+    output.localPos = mul3(ap.camera.viewInv, viewPos);
 
     output.uv = input.uv();
     output.color = input.color();
@@ -44,19 +52,34 @@ VertexOutput vertexMain(Vertex input) {
         output.color = lerp(output.color, overlayColor, overlayColor.a);
     }
 
+    float3 viewNormal;
     output.normal = 0.0;
     if (let value = input.normal()) {
-        output.normal = mul(input.normalMatrix(), value);
-        output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
+        viewNormal = mul(input.normalMatrix(), value);
+        output.normal = mul(float3x3(ap.camera.viewInv), viewNormal);
         output.normal = normalize(output.normal);
     }
 
+    float3 viewTangent;
     output.tangent = 0.0;
     if (let value = input.tangent()) {
         output.tangent = value;
-        output.tangent.xyz = mul(input.normalMatrix(), output.tangent.xyz);
-        output.tangent.xyz = mul(float3x3(ap.camera.viewInv), output.tangent.xyz);
+        viewTangent = mul(input.normalMatrix(), output.tangent.xyz);
+        output.tangent.xyz = mul(float3x3(ap.camera.viewInv), viewTangent);
         output.tangent.xyz = normalize(output.tangent.xyz);
+    }
+
+    if (Parallax_Enabled) {
+        // if (let midCoord = input.midCoord()) {
+        //     AtlasBounds atlas = GetAtlasBounds(output.uv, midCoord);
+        //     output.atlasCoordMin = atlas.CoordMin;
+        //     output.atlasCoordSize = atlas.CoordSize;
+        // }
+
+        float3x3 matViewTBN = GetTBN(viewNormal, viewTangent, output.tangent.w);
+
+        float3 viewPos = mul3(ap.camera.view, output.localPos);
+        output.tangentViewPos = mul(matViewTBN, viewPos.xyz); // TODO: this might be backwards!
     }
 
     if (TAA_Enabled) {
@@ -76,13 +99,33 @@ struct FragmentOutput {
 
 [[shader("fragment")]]
 FragmentOutput fragmentMain(VertexOutput input) {
-    float LOD = albedoTex.CalculateLevelOfDetail(input.uv);
+    float2 uv = input.uv;
+    float LOD = albedoTex.CalculateLevelOfDetail(uv);
 
-    float4 color = albedoTex.SampleLevel(input.uv, LOD) * input.color;
+    if (Parallax_Enabled) {
+        float texDepth = 1.0;
+        float3 traceCoordDepth = 1.0;
+
+        float viewDist = length(input.localPos);
+        float3 tanViewDir = normalize(input.tangentViewPos);
+        bool skipParallax = false;
+
+        if (!skipParallax && viewDist < MATERIAL_PARALLAX_MAXDIST) {
+            AtlasBounds atlas;
+            atlas.CoordMin = input.atlasCoordMin;
+            atlas.CoordSize = input.atlasCoordSize;
+
+
+            float2 localCoord = atlas.GetLocalCoord(uv);
+            uv = GetParallaxCoord(localCoord, int(LOD), atlas, tanViewDir, viewDist, texDepth, traceCoordDepth);
+        }
+    }
+
+    float4 color = albedoTex.SampleLevel(uv, LOD) * input.color;
+    float4 normalData = normalTex.SampleLevel(uv, LOD);
+    float4 specularData = specularTex.SampleLevel(uv, LOD);
+
     iris_discardIfNeeded(color);
-
-    float4 normalData = normalTex.SampleLevel(input.uv, LOD);
-    float4 specularData = specularTex.SampleLevel(input.uv, LOD);
 
     float3 geo_normal = normalize(input.normal);
     float3 tex_normal = geo_normal;
@@ -90,7 +133,6 @@ FragmentOutput fragmentMain(VertexOutput input) {
     if (MATERIAL_FORMAT != MAT_NONE) {
         tex_normal = mat_normal(normalData.rgb);
         float3 tangent = normalize(input.tangent.xyz);
-        //if (geo_normal.y < -0.99) tangent = -tangent;
         float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
         tex_normal = normalize(mul(tex_normal, TBN));
     }
