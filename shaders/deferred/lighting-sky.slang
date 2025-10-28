@@ -91,7 +91,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     // float roughL = roughness*roughness;
 
-    //float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
+    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
     float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
 
     float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
@@ -111,9 +111,16 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
+    float viewDist = length(viewPos);
+    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene.SkyLightLocalDir));
+    float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
+    float offset_bias = viewDist * 0.002;
+
     int shadowCascade;
     float3 shadowPos;
-    float3 shadowViewPos = mul3(ap.celestial.view, localPos);
+    float3 shadowLocalPos = geo_normal * normal_bias + localPos;
+    float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
+    shadowViewPos.z += offset_bias;
     GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
 
     float shadow = 1.0;

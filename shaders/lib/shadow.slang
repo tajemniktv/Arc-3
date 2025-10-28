@@ -31,6 +31,6 @@ float SampleShadow(in float3 shadowPos, const in int shadowCascade, out float ss
     float sampleDepth = solidShadowMap.Sample(shadowCoord).r;
     sssDepth = max(shadowPos.z - sampleDepth, 0.0) * zRange;
 
-    const float bias = 0.02 / zRange;
-    return solidShadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z - bias).r;
+    //const float bias = 0.02 / zRange;
+    return solidShadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z).r;
 }
