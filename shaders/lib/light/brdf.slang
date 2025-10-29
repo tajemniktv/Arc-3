@@ -1,17 +1,19 @@
 import lib.common;
 import lib.light.fresnel;
 
-
+// Attenuation - Power curve falloff
 float GetLightAttenuation_Linear(const in float lightDist, const in float lightRange) {
     float lightDistF = lightDist / lightRange;
     lightDistF = 1.0 - saturate(lightDistF);
     return pow(lightDistF, 5);
 }
 
+// Attenuation - Inverse square law
 float GetLightAttenuation_invSq(const in float lightDist, const in float lightRadius) {
     return 1.0 / ((lightDist*lightDist) + lightRadius);
 }
 
+// Attenuation - blend, depending on distance to light
 float GetLightAttenuation(const in float lightDist, const in float lightRange, const in float lightRadius) {
     float linear = GetLightAttenuation_Linear(lightDist, lightRange);
     float invSq = GetLightAttenuation_invSq(max(lightDist-lightRadius, 0.0), lightRadius);
