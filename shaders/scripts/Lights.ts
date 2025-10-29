@@ -10,6 +10,10 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx('#d39255', 'exposed_copper_bulb', 'waxed_exposed_copper_bulb');
     setLightColorEx('#cf833a', 'weathered_copper_bulb', 'waxed_weathered_copper_bulb');
     setLightColorEx('#87480b', 'oxidized_copper_bulb', 'waxed_oxidized_copper_bulb');
+    setLightColorEx('#d39f6d', 'copper_lantern', 'waxed_copper_lantern');
+    setLightColorEx('#d39255', 'exposed_copper_lantern', 'waxed_exposed_copper_lantern');
+    setLightColorEx('#cf833a', 'weathered_copper_lantern', 'waxed_weathered_copper_lantern');
+    setLightColorEx('#87480b', 'oxidized_copper_lantern', 'waxed_oxidized_copper_lantern');
     setLightColorEx('#7f17a8', 'crying_obsidian', 'respawn_anchor');
     setLightColorEx('#371559', 'enchanting_table');
     setLightColorEx('#3d4d59', 'ender_chest');
