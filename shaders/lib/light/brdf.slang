@@ -55,35 +55,41 @@ float GetLightAttenuation(const in float lightDist, const in float lightRange, c
     }
 }
 
+// ============================================================================
+// BRDF Functions (Original)
+// ============================================================================
+
 // Disney Diffuse BRDF
 float SampleLightDiffuse(const in float NoV, const in float NoL, const in float LoH, const in float roughL) {
     float f90 = 0.5 + 2.0*roughL * (LoH*LoH);
     float light_scatter = F_schlick(NoL, 1.0, f90);
     float view_scatter = F_schlick(NoV, 1.0, f90);
-    return light_scatter * view_scatter;
+    return light_scatter * view_scatter;// / PI;
 }
 
+// GGX Normal Distribution Function
 float D_GGX(const in float NoH, const in float roughL) {
     float a2 = roughL * roughL;
     float f = (NoH * a2 - NoH) * NoH + 1.0;
     return a2 / (PI * f * f);
 }
 
-// Smith GGX Correlated Visibility Function (Height-Correlated G2)
-// More accurate and energy conserving than separated G terms
-float V_SmithGGXCorrelated(float NoL, float NoV, float roughness) {
-    float a2 = roughness * roughness;
-    float GGXV = NoL * sqrt(NoV * NoV * (1.0 - a2) + a2);
-    float GGXL = NoV * sqrt(NoL * NoL * (1.0 - a2) + a2);
-    return 0.5 / max(GGXV + GGXL, EPSILON);
+// Smith GGX Visibility Function (Original version)
+float V_SmithGGXCorrelated(float NdotL, float NdotV, float roughness) {
+    float a = roughness * roughness;
+    float k = (a + 1.0) * (a + 1.0) / 8.0;
+    float G_V = NdotV / (NdotV * (1.0 - k) + k);
+    float G_L = NdotL / (NdotL * (1.0 - k) + k);
+    return G_V * G_L;
 }
 
-
-
-// Cook-Torrance Specular BRDF
-// V function already includes division by (4 * NoL * NoV)
+// Specular BRDF (Original version)
 float3 SampleLightSpecular(float NoL, float NoH, float NoV, float3 F_VoH, float roughL) {
     float D = D_GGX(NoH, roughL);
-    float V = V_SmithGGXCorrelated(NoL, NoV, roughL);
-    return D * V * F_VoH;
+    float G = V_SmithGGXCorrelated(NoL, NoV, roughL);
+    
+    float3 numerator = D * G * F_VoH;
+    float denominator = 4.0 * NoL * NoV + 0.0001;
+    return numerator / denominator;
 }
+
