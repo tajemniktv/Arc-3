@@ -12,8 +12,6 @@ import lib.shadow;
 
 extern static const bool TAA_Enabled;
 
-ConstantBuffer<SceneBuffer> scene;
-
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
@@ -72,7 +70,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float depth = mainDepthTex[uv];
     float2 texcoord = pos / ap.game.screenSize;
-    if (TAA_Enabled) texcoord -= scene.taa_jitter;
+    if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
 
     float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
     float3 viewPos = project(ap.camera.projectionInv, clipPos);
@@ -112,21 +110,23 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
     float viewDist = length(viewPos);
-    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene.SkyLightLocalDir));
+    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
     float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
     float offset_bias = viewDist * 0.002;
 
-    int shadowCascade;
-    float3 shadowPos;
     float3 shadowLocalPos = geo_normal * normal_bias + localPos;
     float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
     shadowViewPos.z += offset_bias;
-    GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
+    
+    const float paddingBlocks = 0.05;
+    int shadowCascade = GetShadowProjection(shadowViewPos, paddingBlocks);
 
     float shadow = 1.0;
     float sssDepth = 0.0;
-    if (shadowCascade >= 0)
+    if (shadowCascade >= 0) {
+        float3 shadowPos = mul3(ap.celestial.projection[shadowCascade], shadowViewPos).xyz * 0.5 + 0.5;
         shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
+    }
 
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
 
@@ -134,12 +134,12 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     // float3 sssFinal = sss * (1.0 - NoLm) * exp(-2.0 * (sssDepth+0.0)) * scene.SunColor;
     // output.diffuse += sssFinal;
     
-    light.color = scene.SunColor;
-    light.localDir = scene.SunLocalDir;
+    light.color = scene[0].SunColor;
+    light.localDir = scene[0].SunLocalDir;
     SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
 
-    light.color = scene.MoonColor;
-    light.localDir = scene.MoonLocalDir;
+    light.color = scene[0].MoonColor;
+    light.localDir = scene[0].MoonLocalDir;
     SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
 
     output.diffuse = output.diffuse / PI * shadow + ambient;
@@ -155,7 +155,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
     reflectLocalDir = normalize(reflectLocalDir);
 
-    float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene.SunLocalDir);
+    float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene[0].SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
     output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
     //output.diffuse *= 1.0 - F_NoV;

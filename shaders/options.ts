@@ -18,6 +18,7 @@ export function setupOptions() {
                 .add(asBool('LIGHTING_POINT_EMISSION_MASK', false, true))
                 .add(asIntRange('LIGHTING_POINT_MAXCOUNT', 128, 4, 256, 4, true))
                 .add(asInt('LIGHTING_POINT_RESOLUTION', 32, 64, 128, 256, 512).needsReload(true).build(128))
+                .add(asInt('LIGHTING_ATTENUATION_MODE', 0, 1, 2).needsReload(false).build(1))
                 .build())
             .add(EMPTY)
             .add(new Page('LIGHTING_AMBIENT')
