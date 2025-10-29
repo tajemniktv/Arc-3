@@ -42,7 +42,10 @@ float4 applyExposure(float2 pos : SV_Position) : SV_Target0 {
 
     float3 xyY = xyz_to_xyY(mul(RGB_TO_XYZ, color));
 
-    float exposureF = clamp(scene.exposure, Scene_PostExposureMin, Scene_PostExposureMax);
+    // Clamp exposure to histogram's luminance range
+    // Scene_PostExposureMin/Max are in log2 space, so convert to linear
+    //float exposureF = clamp(scene.exposure, Scene_PostExposureMin, Scene_PostExposureMax); // Isn't it clamping linear to log? 
+    float exposureF = clamp(scene.exposure, exp2(Scene_PostExposureMin), exp2(Scene_PostExposureMax)); // Clamp to linear
 
     float lp = ev_100(xyY.z, exposureF);
     xyY.z = lp * exp2(-Scene_PostExposureOffset);
