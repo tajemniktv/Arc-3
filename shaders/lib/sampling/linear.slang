@@ -15,11 +15,10 @@ float2 GetLinearCoords(const in float2 texcoord, const in float2 texSize, out fl
 float2 GetLinearCoords(const in float2 texcoordFull, out int2 uv[4]) {
     float2 f = fract(texcoordFull);
 
-    int2 iuv[4];
-    iuv[0] = int2(texcoordFull - f);
-    iuv[1] = iuv[0]+int2(1, 0);
-    iuv[2] = iuv[0]+int2(0, 1);
-    iuv[3] = iuv[0]+int2(1, 1);
+    uv[0] = int2(texcoordFull - f);
+    uv[1] = uv[0]+int2(1, 0);
+    uv[2] = uv[0]+int2(0, 1);
+    uv[3] = uv[0]+int2(1, 1);
 
     return f;
 }
