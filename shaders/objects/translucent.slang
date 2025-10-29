@@ -12,8 +12,6 @@ extern static const bool disableFog;
 extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 
-ConstantBuffer<SceneBuffer> scene;
-
 struct VertexOutput {
     float4 position : SV_Position;
 
@@ -59,7 +57,7 @@ VertexOutput vertexMain(Vertex input) {
     }
 
     if (TAA_Enabled) {
-        output.position.xy += scene.taa_jitter * (2.0 * output.position.w);
+        output.position.xy += scene[0].taa_jitter * (2.0 * output.position.w);
     }
 
     return output;
@@ -91,25 +89,34 @@ FragmentOutput fragmentMain(VertexOutput input) {
 
     float lmcoord_y = input.light.g*input.light.g;
 
-    int shadowCascade;
-    float3 shadowPos;
-    float3 shadowViewPos = mul3(ap.celestial.view, input.localPos);
-    GetShadowProjection(shadowViewPos, shadowCascade, shadowPos);
+    float viewDist = length(input.localPos);
+    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
+    float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
+    float offset_bias = viewDist * 0.002;
+
+    float3 shadowLocalPos = geo_normal * normal_bias + input.localPos;
+    float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
+    shadowViewPos.z += offset_bias;
+
+    const float paddingBlocks = 0.05;
+    int shadowCascade = GetShadowProjection(shadowViewPos, paddingBlocks);
 
     float shadow = 1.0;
     float sssDepth = 0.0;
-    if (shadowCascade >= 0)
+    if (shadowCascade >= 0) {
+        float3 shadowPos = mul3(ap.celestial.projection[shadowCascade], shadowViewPos).xyz * 0.5 + 0.5;
         shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
+    }
 
     float3 skyPos = getSkyPosition(input.localPos);
 
-    float NoLm_sun = max(dot(tex_normal, scene.SunLocalDir), 0.0);
-    float3 sunTransmit = sampleSkyTransmit(skyPos, scene.SunLocalDir);
-    float3 lightSun = NoLm_sun * sunTransmit * scene.SunColor;
+    float NoLm_sun = max(dot(tex_normal, scene[0].SunLocalDir), 0.0);
+    float3 sunTransmit = sampleSkyTransmit(skyPos, scene[0].SunLocalDir);
+    float3 lightSun = NoLm_sun * sunTransmit * scene[0].SunColor;
 
-    float NoLm_moon = max(dot(tex_normal, scene.MoonLocalDir), 0.0);
-    float3 moonTransmit = sampleSkyTransmit(skyPos, scene.MoonLocalDir);
-    float3 lightMoon = NoLm_moon * moonTransmit * scene.MoonColor;
+    float NoLm_moon = max(dot(tex_normal, scene[0].MoonLocalDir), 0.0);
+    float3 moonTransmit = sampleSkyTransmit(skyPos, scene[0].MoonLocalDir);
+    float3 lightMoon = NoLm_moon * moonTransmit * scene[0].MoonColor;
 
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * input.occlusion;
 

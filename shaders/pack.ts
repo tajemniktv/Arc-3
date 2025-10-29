@@ -63,6 +63,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     pipeline.setGlobalExport(pipeline.createExportList()
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
+        .addInt('SHADOW_CASCADE_COUNT', 4)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)
@@ -71,7 +72,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     ApplyLightColors(options.Lighting_ColorCandles);
 
-    pipeline.createBuffer("scene", 96, false);
+    pipeline.createBuffer("scene", 1024, false);
     settings = pipeline.createStreamingBuffer("settings", 32);
 
     const texFinalA = pipeline.createImageTexture("texFinalA", "imgFinalA")
@@ -356,7 +357,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .compile();
 
     postRender.createComposite("exposure-apply")
-        .location("post/exposure-apply", "applyExposure")
+        .location("post/expose", "applyExposure")
         .target(0, finalFlipper.getWriteTexture())
         .overrideObject("texSource", finalFlipper.getReadTextureName())
         .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
@@ -388,7 +389,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     
         for (let i = 0; i < maxLod; i++) {
             bloomStage.createComposite(`bloom-down-${i}`)
-                .location("post/bloom-down", "applyBloomDown")
+                .location("post/bloom", "applyBloomDown")
                 .target(0, texBloom, i)
                 .overrideObject("texSource", i == 0 ? finalFlipper.getReadTextureName() : 'texBloom')
                 //.exportInt("TEX_SCALE", Math.pow(2, i))
@@ -399,7 +400,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     
         for (let i = maxLod-1; i >= 0; i--) {
             const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
-                .location('post/bloom-up', "applyBloomUp")
+                .location('post/bloom', "applyBloomUp")
                 .overrideObject("texSource", finalFlipper.getReadTextureName())
                 //.exportInt("TEX_SCALE", Math.pow(2, i+1))
                 .exportInt("BLOOM_INDEX", i)
