@@ -35,25 +35,6 @@ Sampler2D<uint2> texMatLightGB;
 Sampler2D<float> mainDepthTex;
 SamplerCubeArrayShadow pointLightFiltered;
 
-
-// float GetLightAttenuation_Linear(const in float lightDist, const in float lightRange) {
-//     float lightDistF = lightDist / lightRange;
-//     lightDistF = 1.0 - saturate(lightDistF);
-//     return pow(lightDistF, 5);
-// }
-
-// float GetLightAttenuation_invSq(const in float lightDist, const in float lightRadius) {
-//     return 1.0 / ((lightDist*lightDist) + lightRadius);
-// }
-
-// float GetLightAttenuation(const in float lightDist, const in float lightRange, const in float lightRadius) {
-//     float linear = GetLightAttenuation_Linear(lightDist, lightRange);
-//     float invSq = GetLightAttenuation_invSq(max(lightDist-lightRadius, 0.0), lightRadius);
-
-//     float f = saturate(lightDist / lightRange);
-//     return lerp(invSq, linear, f);
-// }
-
 // float4 projectSphereView(float3 center, float radius, float P00, float P11) {
 //     float3 cr = center * radius;
 //     float czr2 = center.z * center.z - radius * radius;
@@ -128,16 +109,19 @@ void applyPointLights(ComputeInput input) {
             float2 groupPosMin = groupPos / float2(ap.game.screenSize);
             float2 groupPosMax = (groupPos + WorkgroupSize().xy) / float2(ap.game.screenSize);
             
+            // Frustum planes from tile corners
             float3 c1 = unprojectCorner(groupPosMin.x, groupPosMin.y);
             float3 c2 = unprojectCorner(groupPosMax.x, groupPosMin.y);
             float3 c3 = unprojectCorner(groupPosMin.x, groupPosMax.y);
             float3 c4 = unprojectCorner(groupPosMax.x, groupPosMax.y);
 
+			// 4 plane normals from corner cross products
             float3 clipDown  = normalize(cross(c2, c1));
             float3 clipRight = normalize(cross(c4, c2));
             float3 clipUp    = normalize(cross(c3, c4));
             float3 clipLeft  = normalize(cross(c1, c3));
             
+            // is light sphere outside of any plane
             if (dot(clipDown,  lightViewPos) > lightRange) hit = false;
             if (dot(clipRight, lightViewPos) > lightRange) hit = false;
             if (dot(clipUp,    lightViewPos) > lightRange) hit = false;
@@ -200,6 +184,7 @@ void applyPointLights(ComputeInput input) {
         float lightDist = length(lightOffset);
         float3 lightDir = lightOffset / lightDist;
 
+		// Light Attenuation
         const float lightRadius = 0.5;
         float lightAtt = GetLightAttenuation(lightDist, lightRange, lightRadius);
         if (lightAtt < EPSILON) continue;
