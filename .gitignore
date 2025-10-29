@@ -428,4 +428,4 @@ Other/
 .iris/
 shaders/*.js
 shaders/*.js.map
-
+*.md
