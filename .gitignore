@@ -421,3 +421,8 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Taj's Specific Folders
+.idea/
+Other/
+.iris/
