@@ -484,6 +484,7 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 
 export function beginFrame(state : WorldState) : void {
     if (options.Post_TAA_Enabled && texFinalPrevRef && imgFinalPrevRef) {
+        // Only runs when TAA is enabled AND references exist
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
