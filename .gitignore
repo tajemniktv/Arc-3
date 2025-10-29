@@ -426,3 +426,6 @@ FodyWeavers.xsd
 .idea/
 Other/
 .iris/
+shaders/*.js
+shaders/*.js.map
+
