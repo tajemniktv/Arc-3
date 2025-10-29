@@ -5,7 +5,7 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 import lib.shadow;
-import lib.material;
+import lib.material.pbr;
 import lib.tbn;
 
 extern static const bool disableFog;

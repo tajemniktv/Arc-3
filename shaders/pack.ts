@@ -332,7 +332,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     postRender.createCompute('histogram')
-        .location('post/histogram', "computeHistogram")
+        .location('post/histogram-exposure', "buildHistogram")
         .workGroups(
             Math.ceil(screenWidth / 16.0),
             Math.ceil(screenHeight / 16.0),
@@ -343,7 +343,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .compile();
 
     postRender.createCompute('exposure-compute')
-        .location('post/exposure-compute', "computeExposure")
+        .location('post/histogram-exposure', "computeExposure")
         .workGroups(1, 1, 1)
         .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
         .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)

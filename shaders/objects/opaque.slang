@@ -146,7 +146,8 @@ FragmentOutput fragmentMain(VertexOutput input) {
         tex_normal = normalize(mul(tex_normal, TBN));
     }
 
-    float occlusion = input.occlusion * normalData.b;
+    float tex_occlusion = mat_occlusion(normalData.b);
+    float occlusion = input.occlusion * tex_occlusion;
 
     FragmentOutput output;
     output.albedo = color;

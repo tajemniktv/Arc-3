@@ -1,6 +1,6 @@
 import aperture;
 import lib.common;
-import lib.material;
+import lib.material.pbr;
 
 
 extern static const bool EmissionMask;
@@ -20,8 +20,10 @@ VertexOutput vertexMain(Vertex input) {
     output.uv = input.uv();
     output.modelPos = input.pos().xyz;
 
-    output.blockId = -1;
-    if (let value = input.blockId()) output.blockId = value;
+    if (!EmissionMask) {
+        output.blockId = -1;
+        if (let value = input.blockId()) output.blockId = value;
+    }
 
     PointLight light = ap.lights[input.currentInstance()];
 
