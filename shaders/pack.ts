@@ -483,7 +483,7 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 }
 
 export function beginFrame(state : WorldState) : void {
-    if (options.Post_TAA_Enabled) {
+    if (options.Post_TAA_Enabled && texFinalPrevRef && imgFinalPrevRef) {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
