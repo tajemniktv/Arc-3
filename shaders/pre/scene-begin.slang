@@ -29,4 +29,9 @@ void beginScene() {
     scene[0].MoonLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.moonPosition));
 
     scene[0].SkyLightLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.position));
+
+    for (int i = 0; i < SHADOW_CASCADE_COUNT; i++) {
+        scene[0].shadowViewMin[i] = mul3(ap.celestial.projectionInv[i], float3(-1.0, -1.0, 0.0)).xy;
+        scene[0].shadowViewMax[i] = mul3(ap.celestial.projectionInv[i], float3( 1.0,  1.0, 0.0)).xy;
+    }
 }
