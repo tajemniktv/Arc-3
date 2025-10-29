@@ -8,6 +8,10 @@ import lib.sky.sample_final;
 extern static const float BLOCK_LUX;
 extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
+extern static const float Lighting_Ambient_Brightness;
+extern static const float Lighting_Ambient_Red;
+extern static const float Lighting_Ambient_Green;
+extern static const float Lighting_Ambient_Blue;
 
 ConstantBuffer<SceneBuffer> scene;
 // ConstantBuffer<SettingsBuffer> settings;
@@ -44,7 +48,8 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         // float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
         float4 specularData = unpackUnorm4x8ToFloat(texMatLightGB[uv].r);
         
-        float3 ambient = 0.02;
+        float3 ambientColor = float3(Lighting_Ambient_Red, Lighting_Ambient_Green, Lighting_Ambient_Blue);
+        float3 ambient = Lighting_Ambient_Brightness * ambientColor;
         float4 albedo = texAlbedoGB[uv];
         float3 diffuse = texDiffuse[uv];
         float3 specular = texSpecular[uv];

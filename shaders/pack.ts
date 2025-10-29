@@ -316,6 +316,10 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     stagePostOpaque.createComposite("deferred-lighting-final")
         .location("deferred/lighting-final", "lightingFinal")
         .target(0, finalFlipper.getWriteTexture())
+        .exportFloat("Lighting_Ambient_Brightness", options.Lighting_Ambient_Brightness)
+        .exportFloat("Lighting_Ambient_Red", options.Lighting_Ambient_Red)
+        .exportFloat("Lighting_Ambient_Green", options.Lighting_Ambient_Green)
+        .exportFloat("Lighting_Ambient_Blue", options.Lighting_Ambient_Blue)
         .compile();
 
     stagePostOpaque.end();

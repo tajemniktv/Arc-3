@@ -38,6 +38,22 @@ option.LIGHTING_POINT_MAXCOUNT=Max Light Count
 option.LIGHTING_POINT_RESOLUTION=Resolution
 suffix.LIGHTING_POINT_RESOLUTION=x
 
+option.LIGHTING_COLOR_CANDLES=Colored Candles
+
+screen.LIGHTING_AMBIENT=Ambient Light
+
+option.LIGHTING_AMBIENT_BRIGHTNESS=Brightness
+option.LIGHTING_AMBIENT_BRIGHTNESS.comment=Overall brightness of ambient light. Default is 0.02 (2%).
+
+option.LIGHTING_AMBIENT_RED=Red Channel
+option.LIGHTING_AMBIENT_RED.comment=Red color multiplier for ambient light. 1.0 = neutral white.
+
+option.LIGHTING_AMBIENT_GREEN=Green Channel
+option.LIGHTING_AMBIENT_GREEN.comment=Green color multiplier for ambient light. 1.0 = neutral white.
+
+option.LIGHTING_AMBIENT_BLUE=Blue Channel
+option.LIGHTING_AMBIENT_BLUE.comment=Blue color multiplier for ambient light. 1.0 = neutral white.
+
 
 screen.SHADOWS=Shadows
 
