@@ -19,6 +19,7 @@ export function setupOptions() {
                 .add(asIntRange('LIGHTING_POINT_MAXCOUNT', 128, 4, 256, 4, true))
                 .add(asInt('LIGHTING_POINT_RESOLUTION', 32, 64, 128, 256, 512).needsReload(true).build(128))
                 .add(asInt('LIGHTING_ATTENUATION_MODE', 0, 1, 2).needsReload(false).build(1))
+                .build())
             .add(EMPTY)
             .add(new Page('LIGHTING_AMBIENT')
                 .add(asFloatRange('LIGHTING_AMBIENT_BRIGHTNESS', 0.02, 0.0, 0.5, 0.01, false))
