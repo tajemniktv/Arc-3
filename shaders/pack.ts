@@ -311,6 +311,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenWidth / 16.0),
             Math.ceil(screenHeight / 16.0),
             1)
+        .exportInt("LIGHTING_ATTENUATION_MODE", options.Lighting_Attenuation_Mode)
         .compile();
 
     stagePostOpaque.createComposite("deferred-lighting-final")

@@ -1,5 +1,8 @@
 {
-  "_comment": "Who really gives a fuck.",
+  "_comment": "Arc-3 Shader Pack - Enhanced BRDF & Lighting System",
   "name": "Arc-3",
-  "version": "1.0.0"
+  "version": "2.0.0",
+  "description": "Advanced PBR shader with improved BRDF, multi-scattering, and physically-based lighting for Minecraft 1.21+",
+  "author": "Arc-3 Development Team",
+  "license": "See LICENSE file"
 }
