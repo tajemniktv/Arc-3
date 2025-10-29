@@ -23,6 +23,7 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx('#c2985a', 'jack_o_lantern');
     setLightColorEx('#f39e49', 'lantern');
     setLightColorEx('#b8491c', 'lava', 'magma_block');
+    setLightColorEx('#ffffff', 'light'); // Could be any color, but white makes sense
     setLightColorEx('#650a5e', 'nether_portal');
     setLightColorEx('#dfac47', 'ochre_froglight');
     setLightColorEx('#e075e8', 'pearlescent_froglight');
