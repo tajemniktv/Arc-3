@@ -7,7 +7,12 @@ import lib.material.pbr;
 import lib.material.parallax;
 import lib.tbn;
 
+extern static const bool RENDER_TERRAIN = false;
+extern static const bool RENDER_PARTICLES = false;
 extern static const bool TAA_Enabled;
+
+static const bool SupportsParallax = Parallax_Enabled && !RENDER_PARTICLES;
+static const bool SupportsTexNormals = !RENDER_PARTICLES;
 
 ConstantBuffer<SceneBuffer> scene;
 
@@ -36,7 +41,7 @@ VertexOutput vertexMain(Vertex input) {
     float3 viewPos = mul3(input.viewMatrix(), modelPos);
     output.position = mul(input.projectionMatrix(), float4(viewPos, 1.0));
 
-    if (Parallax_Enabled) {
+    if (SupportsParallax) {
         output.localPos = mul3(ap.camera.viewInv, viewPos);
     }
 
@@ -60,15 +65,17 @@ VertexOutput vertexMain(Vertex input) {
     }
 
     float3 viewTangent;
-    output.tangent = 0.0;
-    if (let value = input.tangent()) {
-        output.tangent = value;
-        viewTangent = mul(input.normalMatrix(), output.tangent.xyz);
-        output.tangent.xyz = mul(float3x3(ap.camera.viewInv), viewTangent);
-        output.tangent.xyz = normalize(output.tangent.xyz);
+    //output.tangent = 0.0;
+    if (SupportsTexNormals || SupportsParallax) {
+        if (let value = input.tangent()) {
+            output.tangent = value;
+            viewTangent = mul(input.normalMatrix(), output.tangent.xyz);
+            output.tangent.xyz = mul(float3x3(ap.camera.viewInv), viewTangent);
+            output.tangent.xyz = normalize(output.tangent.xyz);
+        }
     }
 
-    if (Parallax_Enabled) {
+    if (SupportsParallax) {
         if (let midCoord = input.midCoord()) {
             AtlasBounds atlas;
             atlas.Populate(output.uv, midCoord);
@@ -79,7 +86,7 @@ VertexOutput vertexMain(Vertex input) {
         float3x3 TBN = GetTBN(viewNormal, viewTangent, output.tangent.w);
 
         float3 viewPos = mul3(ap.camera.view, output.localPos);
-        output.tangentViewPos = mul(TBN, viewPos.xyz); // TODO: this might be backwards!
+        output.tangentViewPos = mul(TBN, viewPos.xyz);
     }
 
     if (TAA_Enabled) {
@@ -107,7 +114,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
     float texDepth = 1.0;
     float3 traceCoordDepth = 1.0;
     bool skipParallax = false;
-    if (Parallax_Enabled) {
+    if (SupportsParallax) {
         float viewDist = length(input.localPos);
         tanViewDir = normalize(input.tangentViewPos);
 
@@ -129,10 +136,10 @@ FragmentOutput fragmentMain(VertexOutput input) {
     float3 geo_normal = normalize(input.normal);
     float3 tex_normal = geo_normal;
 
-    if (MATERIAL_FORMAT != MAT_NONE) {
+    if (SupportsTexNormals && MATERIAL_FORMAT != MAT_NONE) {
         tex_normal = mat_normal(normalData.rgb);
 
-        if (Parallax_Enabled && !skipParallax && Parallax_Type == POM_TYPE_SHARP) {
+        if (SupportsParallax && !skipParallax && Parallax_Type == POM_TYPE_SHARP) {
             float depthDiff = max(texDepth - traceCoordDepth.z, 0.0);
 
             if (depthDiff >= ParallaxSharpThreshold) {

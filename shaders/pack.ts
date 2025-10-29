@@ -270,26 +270,67 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
     discardShader("cloud-discard", Usage.CLOUDS);
 
-    const shaderBasicOpaque = pipeline.createObjectShader("basic-opaque", Usage.BASIC)
-        .location("objects/opaque")
-        .exportBool('Parallax_Enabled', options.Material_Parallax_Enabled)
-        .exportInt('Parallax_Type', options.Material_Parallax_Type)
-        .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
-        .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
-        .exportBool('Parallax_Optimize', options.Material_Parallax_Optimize)
-        .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-        .target(1, texNormalGB).blendOff(1)
-        .target(2, texMatLightGB).blendOff(2);
-    if (options.Post_TAA_Enabled) shaderBasicOpaque.target(3, texVelocity).blendOff(3);
-    shaderBasicOpaque.compile();
+    function opaqueObjectShader(name: string, usage: ProgramUsage) {
+        const shader = pipeline.createObjectShader(name, usage)
+            .location("objects/opaque")
+            .exportBool('Parallax_Enabled', options.Material_Parallax_Enabled)
+            .exportInt('Parallax_Type', options.Material_Parallax_Type)
+            .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
+            .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
+            .exportBool('Parallax_Optimize', options.Material_Parallax_Optimize)
+            .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .target(1, texNormalGB).blendOff(1)
+            .target(2, texMatLightGB).blendOff(2);
 
-    const shaderBasicTrans = pipeline.createObjectShader("basic-translucent", Usage.TERRAIN_TRANSLUCENT)
-        .location("objects/translucent")
-        .exportBool("disableFog", false)
-        .target(0, texFinalA)
-    if (options.Post_TAA_Enabled) shaderBasicTrans.target(1, texVelocity).blendOff(1);
-    shaderBasicTrans.compile();
+        if (options.Post_TAA_Enabled) shader.target(3, texVelocity).blendOff(3);
+        return shader;
+    }
+
+    opaqueObjectShader("basic-opaque", Usage.BASIC).compile();
     
+    opaqueObjectShader("terrain-solid", Usage.TERRAIN_SOLID)
+        .exportBool('RENDER_TERRAIN', true)
+        .compile();
+
+    opaqueObjectShader("terrain-cutout", Usage.TERRAIN_CUTOUT)
+        .exportBool('RENDER_TERRAIN', true)
+        .compile();
+
+    opaqueObjectShader("entity-solid", Usage.ENTITY_SOLID).compile();
+    
+    opaqueObjectShader("entity-cutout", Usage.ENTITY_CUTOUT).compile();
+
+    // opaqueObjectShader("basic-opaque", Usage.PARTICLES_TRANSLUCENT)
+    //     .exportBool('RENDER_PARTICLES', true)
+    //     .compile();
+
+    function translucentObjectShader(name: string, usage: ProgramUsage) {
+        const shader = pipeline.createObjectShader(name, usage)
+            .location("objects/translucent")
+            .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
+
+        //if (options.Post_TAA_Enabled) shader.target(1, texVelocity).blendOff(1);
+        return shader;
+    }
+
+    translucentObjectShader("terrain-translucent", Usage.TERRAIN_TRANSLUCENT)
+        .exportBool('RENDER_TERRAIN', true)
+        .compile();
+
+    translucentObjectShader("entity-translucent", Usage.ENTITY_TRANSLUCENT).compile();
+
+    translucentObjectShader("particles", Usage.PARTICLES)
+        .exportBool('RENDER_PARTICLES', true)
+        .compile();
+
+    pipeline.createObjectShader("weather", Usage.WEATHER)
+        .location("objects/weather")
+        .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+        .compile();
+
+    //if (options.Post_TAA_Enabled) weatherShader.target(1, texVelocity).blendOff(1);
+    // weatherShader.compile();
+        
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
     if (WorldHasSky) {

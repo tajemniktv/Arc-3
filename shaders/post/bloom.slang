@@ -39,7 +39,7 @@ float3 applyBloomDown(float2 pos : SV_Position) : SV_Target0 {
     color += (b+d+f+h) * 0.06250;
     color += (j+k+l+m) * 0.12500;
 
-    // color = clamp(color, 0.0, 65000.0);
+    color = clamp(color, 0.0, 65000.0);
     return color;
 }
 
@@ -72,6 +72,6 @@ float3 applyBloomUp(float2 pos : SV_Position) : SV_Target0 {
         color = color * Effect_Bloom_Strength + texSource[int2(pos)];
     }
 
-    // color = clamp(color, 0.0, 65000.0);
+    color = clamp(color, 0.0, 65000.0);
     return color;
 }

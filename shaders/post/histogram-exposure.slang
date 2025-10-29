@@ -98,7 +98,6 @@ void computeExposure(uint groupIndex : SV_GroupIndex) {
 			float timeF = 1.0 - exp(-max(Scene_PostExposureSpeed * ap.timing.lastFrameTime, 1.0e-12));
 
 			float lumLastFrame = clamp(scene[0].exposure, 0.0, 65000.0);
-			// float lumLastFrame = max(scene[0].exposure, 0.0);
 			adaptedLum = lumLastFrame + (weightedAvgLum - lumLastFrame) * timeF;
 		}
 
