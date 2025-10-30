@@ -8,6 +8,7 @@ const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
+const DEBUG_LIGHT_TILES = true;
 
 let texFinalPrevA : BuiltTexture | undefined;
 let texFinalPrevB : BuiltTexture | undefined;
@@ -140,6 +141,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
+    const texWeather = pipeline.createTexture('texWeather')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clearColor(0, 0, 0, 0)
+        .build();
+
     let texSkyTransmit : BuiltTexture | undefined;
     let texSkyMultiScatter : BuiltTexture | undefined;
     let texSkyView : BuiltTexture | undefined;
@@ -194,6 +202,15 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         //.height(1)
         .clear(false)
         .build();
+
+    if (DEBUG_LIGHT_TILES) {
+        pipeline.createImageTexture('texDebug', 'imgDebug')
+            .format(Format.RGBA8)
+            .width(screenWidth)
+            .height(screenHeight)
+            .clear(true)
+            .build();
+    }
 
 
     const setup = pipeline.forStage(Stage.SCREEN_SETUP);
@@ -325,11 +342,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     pipeline.createObjectShader("weather", Usage.WEATHER)
         .location("objects/weather")
-        .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+        .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
         .compile();
-
-    //if (options.Post_TAA_Enabled) weatherShader.target(1, texVelocity).blendOff(1);
-    // weatherShader.compile();
         
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
@@ -353,6 +367,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenWidth / 16.0),
             Math.ceil(screenHeight / 16.0),
             1)
+        .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
         .compile();
 
     stagePostOpaque.createComposite("deferred-lighting-final")
@@ -366,6 +381,16 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
+    //finalFlipper.flip();
+
+    postRender.createComposite("composite-overlays")
+        .location("composite/overlays", "applyOverlays")
+        .target(0, finalFlipper.getReadTexture())
+        .overrideObject('texSource', finalFlipper.getReadTexture().name())
+        .compile();
+
+    // finalFlipper.flip();
+        
     if (options.Debug_Histogram) {
         postRender.createCompute('histogram-clear')
             .location('setup/histogram-clear', "clearHistogram")
@@ -379,7 +404,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenWidth / 16.0),
             Math.ceil(screenHeight / 16.0),
             1)
-        .overrideObject('texSource', finalFlipper.getReadTextureName())
+        .overrideObject('texSource', finalFlipper.getReadTexture().name())
         .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
         .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
@@ -395,7 +420,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     postRender.createComposite("exposure-apply")
         .location("post/expose", "applyExposure")
         .target(0, finalFlipper.getWriteTexture())
-        .overrideObject("texSource", finalFlipper.getReadTextureName())
+        .overrideObject("texSource", finalFlipper.getReadTexture().name())
         .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
         .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .exportFloat("Scene_PostExposureOffset", Scene_PostExposureOffset)
@@ -427,7 +452,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             bloomStage.createComposite(`bloom-down-${i}`)
                 .location("post/bloom", "applyBloomDown")
                 .target(0, texBloom, i)
-                .overrideObject("texSource", i == 0 ? finalFlipper.getReadTextureName() : 'texBloom')
+                .overrideObject("texSource", i == 0 ? finalFlipper.getReadTexture().name() : 'texBloom')
                 //.exportInt("TEX_SCALE", Math.pow(2, i))
                 //.exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i-1, 0))
@@ -437,7 +462,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         for (let i = maxLod-1; i >= 0; i--) {
             const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
                 .location('post/bloom', "applyBloomUp")
-                .overrideObject("texSource", finalFlipper.getReadTextureName())
+                .overrideObject("texSource", finalFlipper.getReadTexture().name())
                 //.exportInt("TEX_SCALE", Math.pow(2, i+1))
                 .exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i, 0));
@@ -469,8 +494,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 16),
                 1)
-            .overrideObject("texSource", finalFlipper.getReadTextureName())
-            .overrideObject("imgFinal", finalFlipper.getWriteImageName())
+            .overrideObject("texSource", finalFlipper.getReadTexture().name())
+            .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
             .compile();
     }
 
@@ -479,7 +504,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     postRender.createComposite("tonemap")
         .location("post/tonemap", "applyTonemap")
         .target(0, finalFlipper.getWriteTexture())
-        .overrideObject("texSource", finalFlipper.getReadTextureName())
+        .overrideObject("texSource", finalFlipper.getReadTexture().name())
         .compile();
 
     if (options.Post_TAA_Enabled) {
@@ -491,12 +516,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 Math.ceil(screenWidth / 16),
                 Math.ceil(screenHeight / 16),
                 1)
-            .overrideObject("texSource", finalFlipper.getReadTextureName())
-            .overrideObject("imgFinal", finalFlipper.getWriteImageName())
+            .overrideObject("texSource", finalFlipper.getReadTexture().name())
+            .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
             .compile();
     }
 
-    if (options.Debug_Material > 0 || options.Debug_Histogram) {
+    if (options.Debug_Material > 0 || options.Debug_Histogram || DEBUG_LIGHT_TILES) {
         postRender.createComposite("debug")
             .location("post/debug", "renderDebugOverlay")
             .target(0, finalFlipper.getWriteTexture())
@@ -513,7 +538,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     finalFlipper.flip();
 
     pipeline.createCombinationPass("post/final")
-        .overrideObject("texFinal", finalFlipper.getReadTextureName())
+        .overrideObject("texFinal", finalFlipper.getReadTexture().name())
         .compile();
 }
 
