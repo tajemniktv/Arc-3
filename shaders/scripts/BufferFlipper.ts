@@ -13,18 +13,6 @@ export class BufferFlipper {
         this.isAlt = !this.isAlt;
     }
 
-    getReadTextureName(): string {
-        return this.isAlt ? this.textureA.name() : this.textureB.name();
-    }
-
-    getReadImageName(): string {
-        return this.isAlt ? this.textureA.imageName() : this.textureB.imageName();
-    }
-
-    getWriteImageName(): string {
-        return this.isAlt ? this.textureB.imageName() : this.textureA.imageName();
-    }
-
     getReadTexture(): BuiltTexture {
         return this.isAlt ? this.textureA : this.textureB;
     }
