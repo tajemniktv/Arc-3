@@ -1,11 +1,11 @@
 import aperture;
+import buffers.settings;
 import lib.common;
 import lib.sampling.atlas;
 import lib.sampling.linear;
 
 extern static const bool Parallax_Enabled;
 extern static const int Parallax_SampleCount;
-extern static const float Parallax_Depth;
 extern static const int Parallax_Type;
 extern static const bool Parallax_Optimize;
 
@@ -15,6 +15,8 @@ static const float ParallaxSharpThreshold = (1.5/255.0);
 static const int POM_TYPE_NONE = 0;
 static const int POM_TYPE_SHARP = 1;
 static const int POM_TYPE_SMOOTH = 2;
+
+ConstantBuffer<SettingsBuffer> settings;
 
 
 float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in AtlasBounds atlasBounds, const in float3 tanViewDir, const in float viewDist, out float texDepth, out float3 traceDepth) {
@@ -31,7 +33,7 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
         maxTexDepth = sqrt(maxTexDepth);
     }
 
-    float ParallaxDepthF = Parallax_Depth * maxTexDepth;
+    float ParallaxDepthF = settings.ParallaxMaxDepth * maxTexDepth;
     float2 stepCoord = tanViewDir.xy * ParallaxDepthF / (fma(tanViewDir.z, Parallax_SampleCount, 1.0));
     float stepDepth = maxTexDepth / Parallax_SampleCount;
 
