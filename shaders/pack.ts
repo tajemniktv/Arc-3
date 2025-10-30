@@ -10,14 +10,19 @@ const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
 const DEBUG_LIGHT_TILES = true;
 
-let texFinalPrevA : BuiltTexture | undefined;
-let texFinalPrevB : BuiltTexture | undefined;
-let texFinalPrevRef : ActiveTextureReference | undefined;
-let imgFinalPrevRef : ActiveTextureReference | undefined;
-let settings : BuiltStreamingBuffer | undefined;
+let texFinalPrevA: BuiltTexture | undefined;
+let texFinalPrevB: BuiltTexture | undefined;
+let texFinalPrevRef: ActiveTextureReference | undefined;
+let imgFinalPrevRef: ActiveTextureReference | undefined;
+let settings: BuiltStreamingBuffer | undefined;
+
+let _renderConfig: RendererConfig;
 
 
 export function configureRenderer(config: RendererConfig): void {
+    // HACK: allows realtime settings
+    _renderConfig = config;
+
     config.sunPathRotation = 20;
     config.ambientOcclusionLevel = 1.0;
     config.mergedHandDepth = true;
@@ -39,6 +44,7 @@ export function configureRenderer(config: RendererConfig): void {
 
     config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
     config.pointLight.resolution = options.Lighting_Point_Resolution;
+    config.pointLight.realTimeCount = options.Lighting_Point_RealTime;
     config.pointLight.cacheRealTimeTerrain = false;
     config.pointLight.nearPlane = 0.1;
     config.pointLight.farPlane = 16.0;
@@ -292,7 +298,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location("objects/opaque")
             .exportBool('Parallax_Enabled', options.Material_Parallax_Enabled)
             .exportInt('Parallax_Type', options.Material_Parallax_Type)
-            .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
+            // .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
             .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
             .exportBool('Parallax_Optimize', options.Material_Parallax_Optimize)
             .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
@@ -545,8 +551,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 export function onSettingsChanged(pipeline: PipelineConfig) {
     const SkyFogSeaLevel = 60.0;
 
+    _renderConfig.sunPathRotation = options.Shadow_Angle;
+
     new StreamingBufferBuilder(settings)
-        .appendFloat(SkyFogSeaLevel);
+        .appendFloat(SkyFogSeaLevel)
+        .appendFloat(options.Material_Parallax_Depth * 0.01);
 }
 
 export function beginFrame(state : WorldState) : void {
