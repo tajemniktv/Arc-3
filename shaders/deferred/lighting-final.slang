@@ -44,7 +44,7 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         // float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
         float4 specularData = unpackUnorm4x8ToFloat(texMatLightGB[uv].r);
         
-        float3 ambient = 0.02;
+        const float3 ambient = 0.02;
         float4 albedo = texAlbedoGB[uv];
         float3 diffuse = texDiffuse[uv];
         float3 specular = texSpecular[uv];
