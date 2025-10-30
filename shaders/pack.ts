@@ -37,7 +37,7 @@ export function configureRenderer(config: RendererConfig): void {
     config.render.sun = false;
 
     config.shadow.enabled = true;
-    config.shadow.cascades = 4;
+    config.shadow.cascades = options.Shadow_Cascade_Count;
     config.shadow.resolution = options.Shadow_Resolution;
     config.shadow.distance = options.Shadow_Distance;
 
@@ -69,7 +69,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     pipeline.setGlobalExport(pipeline.createExportList()
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
-        .addInt('SHADOW_CASCADE_COUNT', 4)
+        .addInt('SHADOW_CASCADE_COUNT', options.Shadow_Cascade_Count)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)

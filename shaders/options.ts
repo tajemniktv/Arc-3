@@ -36,6 +36,7 @@ export function setupOptions() {
         .add(new Page('SHADOWS')
             .add(asInt('SHADOW_RESOLUTION', 512, 1024, 2048, 4096, 8192).needsReload(true).build(1024))
             .add(asInt('SHADOW_DISTANCE', 50, 100, 150, 200, 250, 300, 400, 500, 600, 800, 1000, 2000, 4000, 8000).needsReload(true).build(200))
+            .add(asInt('SHADOW_CASCADE_COUNT', 1, 2, 3, 4, 5, 6, 7, 8).needsReload(true).build(4))
             .add(asIntRange('SHADOW_ANGLE', 20, -80, 80, 5, false))
             .build())
         .add(new Page('POST')

@@ -93,6 +93,9 @@ suffix.SHADOW_RESOLUTION=x
 
 option.SHADOW_DISTANCE=Distance
 
+option.SHADOW_CASCADE_COUNT=Cascade Count
+option.SHADOW_CASCADE_COUNT.comment=Number of shadow map cascades. More cascades = sharper shadows close to camera but lower performance. Recommended: 4-6.
+
 
 screen.POST=Post-Processing
 

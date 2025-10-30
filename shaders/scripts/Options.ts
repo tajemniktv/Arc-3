@@ -24,6 +24,7 @@ export class Options {
 
     get Shadow_Resolution(): number {return getIntSetting('SHADOW_RESOLUTION');}
     get Shadow_Distance(): number {return getIntSetting('SHADOW_DISTANCE');}
+    get Shadow_Cascade_Count(): number {return getIntSetting('SHADOW_CASCADE_COUNT');}
     get Shadow_Angle(): number {return getIntSetting('SHADOW_ANGLE');}
 
     get Post_Bloom_Enabled(): boolean {return getBoolSetting('POST_BLOOM_ENABLED');}
