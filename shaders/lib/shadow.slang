@@ -20,14 +20,11 @@ int GetShadowProjection(const in float3 shadowViewPos, const in float padding) {
     return cascadeIndex;
 }
 
-float SampleShadow(in float3 shadowPos, const in int shadowCascade, out float sssDepth) {
-    if (any(saturate(shadowPos) != shadowPos)) {
-        sssDepth = 0.0;
-        return 1.0;
-    }
+float SampleShadow(in float3 shadowPos, const in int cascade) {
+    if (any(saturate(shadowPos) != shadowPos)) return 1.0;
 
-    float zRange = -ap.celestial.projectionInv[shadowCascade]._33;
-    float3 shadowCoord = float3(shadowPos.xy, shadowCascade);
+    // float zRange = -0.5 * ap.celestial.projectionInv[cascade]._33;
+    float3 shadowCoord = float3(shadowPos.xy, cascade);
 
     // float sampleDepth = solidShadowMap.Sample(shadowCoord).r;
     // sssDepth = max(shadowPos.z - sampleDepth, 0.0) * zRange;

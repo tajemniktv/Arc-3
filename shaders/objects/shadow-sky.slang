@@ -1,6 +1,8 @@
 import aperture;
 import lib.common;
 
+extern static const bool ALPHATEST_ENABLED = false;
+
 
 struct VertexOutput {
     float4 position : SV_Position;
@@ -17,10 +19,8 @@ VertexOutput vertexMain(Vertex input) {
     output.color = input.color();
     output.uv = input.uv();
 
-    //if (RENDER_TERRAIN) {
     output.blockId = -1;
     if (let value = input.blockId()) output.blockId = value;
-    //}
 
     float3 modelPos = input.pos().xyz;
     float3 shadowViewPos = mul3(input.viewMatrix(), modelPos);
@@ -41,7 +41,7 @@ float4 fragmentMain(VertexOutput input) : SV_Target0 {
     if (input.blockId >= 0 && ap.blocks[input.blockId].isFluid) {
         color = float4(1.0, 1.0, 1.0, 0.02);
     }
-    else {
+    else if (ALPHATEST_ENABLED) {
         color = albedoTex.Sample(input.uv) * input.color;
         iris_discardIfNeeded(color);
     }

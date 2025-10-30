@@ -2,14 +2,14 @@ import aperture;
 import buffers.scene;
 import lib.common;
 import lib.sky.common;
+import lib.sky.scattering;
 import lib.sky.sample_transmit;
 
 static const float mulScattSteps = 20.0;
 static const int sqrtSamples = 8;
 
-ConstantBuffer<SceneBuffer> scene;
-
 Sampler2D<float3> texSkyTransmit;
+
 
 float3 getSphericalDir(float theta, float phi) {
     float cosPhi = cos(phi);
@@ -72,8 +72,8 @@ void getMulScattValues(float3 pos, float3 sunDir, out float3 lumTotal, out float
 
                 // This is slightly different from the paper, but I think the paper has a mistake?
                 // In equation (6), I think S(x,w_s) should be S(x-tv,w_s).
-                float3 sunTransmittanceLux = sampleSkyTransmit(newPos, sunDir) * scene.SunColor;
-                float3 moonTransmittanceLux = sampleSkyTransmit(newPos, -sunDir) * scene.MoonColor;
+                float3 sunTransmittanceLux = sampleSkyTransmit(newPos, sunDir) * scene[0].SunColor;
+                float3 moonTransmittanceLux = sampleSkyTransmit(newPos, -sunDir) * scene[0].MoonColor;
 
                 float3 rayleighInScattering_sun = rayleighScattering * rayleighPhase_sun;
                 float mieInScattering_sun = mieScattering * miePhase_sun;

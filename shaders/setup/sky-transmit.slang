@@ -1,15 +1,19 @@
 import aperture;
+import lib.common;
 import lib.sky.common;
+import lib.sky.scattering;
+
 
 static const int sunTransmittanceSteps = 40;
 
 
 [[shader("fragment")]]
 float3 bakeSkyTransmission(float2 pos : SV_Position) : SV_Target0 {
-    const uint2 viewportDimensions = uint2(256, 64);
-    float2 uv = pos / viewportDimensions;
+    float2 uv = pos / skyTransmitDimensions;
 
     float sunCosTheta = 2.0*uv.x - 1.0;
+    sunCosTheta = pow3(sunCosTheta);// * sign(sunCosTheta);
+
     float sunTheta = safeacos(sunCosTheta);
     float height = lerp(groundRadiusMM, atmosphereRadiusMM, uv.y);
     
