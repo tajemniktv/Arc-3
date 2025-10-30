@@ -26,7 +26,7 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx('#d3b178', 'glowstone');
     setLightColorEx('#c2985a', 'jack_o_lantern');
     setLightColorEx('#f39e49', 'lantern');
-    setLightColorEx('#b8491c', 'lava', 'magma_block');
+    setLightColorEx('#b8491c', 'lava', 'magma_block', 'lava_cauldron');
     setLightColorEx('#ffffff', 'light'); // Could be any color, but white makes sense
     setLightColorEx('#650a5e', 'nether_portal');
     setLightColorEx('#dfac47', 'ochre_froglight');
@@ -77,6 +77,7 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx("#b24cd8", "magenta_stained_glass", "magenta_stained_glass_pane");
     setLightColorEx("#f27fa5", "pink_stained_glass", "pink_stained_glass_pane");
 
+    // Candles
     if (coloredCandles) {
         setLightColorEx("#c07047", "candle");
         setLightColorEx("#ffffff", "white_candle");
