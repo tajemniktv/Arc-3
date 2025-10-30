@@ -10,6 +10,7 @@ import lib.hsv;
 extern static const float BLOCK_LUX;
 extern static const int PointLight_MaxCount;
 extern static const bool TAA_Enabled;
+extern static const bool DEBUG_LIGHT_TILES;
 
 static const uint groupResX = 16;
 static const uint groupResY = 16;
@@ -28,6 +29,9 @@ RWTexture2D<float4> imgDiffuse;
 
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgSpecular;
+
+[[vk::image_format("rgba8")]]
+RWTexture2D<float4> imgDebug;
 
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
@@ -170,8 +174,12 @@ void applyPointLights(ComputeInput input) {
     float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
 
     uint total = counter.load();
-    // float hue = lerp(0.75, 0.0, total / 256.0);
-    // specular = HsvToRgb(float3(hue, 1.0, 10.0));
+
+    if (DEBUG_LIGHT_TILES) {
+        float hue = lerp(0.65, 0.0, total / 256.0);
+        float3 color = HsvToRgb(float3(hue, 1.0, 1.0));
+        imgDebug[input.globalPos.xy] = float4(color, 1.0);
+    }
 
     for (uint i = 0; i < total; i++) {
         uint lightIndex = sharedLightList[i];
