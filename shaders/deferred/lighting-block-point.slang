@@ -39,6 +39,7 @@ Sampler2D<uint2> texMatLightGB;
 Sampler2D<float> mainDepthTex;
 SamplerCubeArrayShadow pointLightFiltered;
 
+
 // float4 projectSphereView(float3 center, float radius, float P00, float P11) {
 //     float3 cr = center * radius;
 //     float czr2 = center.z * center.z - radius * radius;
