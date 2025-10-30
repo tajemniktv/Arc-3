@@ -218,6 +218,15 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
+    if (DEBUG_LIGHT_TILES) {
+        pipeline.createImageTexture('texDebug', 'imgDebug')
+            .format(Format.RGBA8)
+            .width(screenWidth)
+            .height(screenHeight)
+            .clear(true)
+            .build();
+    }
+
 
     const setup = pipeline.forStage(Stage.SCREEN_SETUP);
 
