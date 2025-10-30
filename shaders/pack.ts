@@ -367,6 +367,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     opaqueObjectShader("blockentity-cutout", Usage.BLOCK_ENTITY).compile();
 
+    opaqueObjectShader("hand", Usage.HAND).compile();
+
     // opaqueObjectShader("basic-opaque", Usage.PARTICLES_TRANSLUCENT)
     //     .exportBool('RENDER_PARTICLES', true)
     //     .compile();
@@ -374,7 +376,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     function translucentObjectShader(name: string, usage: ProgramUsage) {
         const shader = pipeline.createObjectShader(name, usage)
             .location("objects/translucent")
-            .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
+            .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.ONE, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
 
         //if (options.Post_TAA_Enabled) shader.target(1, texVelocity).blendOff(1);
         return shader;
@@ -387,6 +389,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     translucentObjectShader("entity-translucent", Usage.ENTITY_TRANSLUCENT).compile();
 
     translucentObjectShader("blockentity-translucent", Usage.BLOCK_ENTITY_TRANSLUCENT).compile();
+
+    translucentObjectShader("hand-translucent", Usage.TRANSLUCENT_HAND).compile();
 
     translucentObjectShader("particles", Usage.PARTICLES)
         .exportBool('RENDER_PARTICLES', true)
@@ -421,8 +425,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    stagePostOpaque.createComposite("deferred-lighting-block")
-        .location("deferred/lighting-block", "lightingBlock")
+    stagePostOpaque.createComposite("deferred-lighting-block-hand")
+        .location("deferred/lighting-block-hand", "lightingBlockHand")
         .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
         .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
         .compile();
