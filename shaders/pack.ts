@@ -154,12 +154,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
-    const texWeather = pipeline.createTexture('texWeather')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGBA16F)
-        .clearColor(0, 0, 0, 0)
-        .build();
 
     let texSkyTransmit : BuiltTexture | undefined;
     let texSkyMultiScatter : BuiltTexture | undefined;
@@ -215,24 +209,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         //.height(1)
         .clear(false)
         .build();
-
-    if (DEBUG_LIGHT_TILES) {
-        pipeline.createImageTexture('texDebug', 'imgDebug')
-            .format(Format.RGBA8)
-            .width(screenWidth)
-            .height(screenHeight)
-            .clear(true)
-            .build();
-    }
-
-    if (DEBUG_LIGHT_TILES) {
-        pipeline.createImageTexture('texDebug', 'imgDebug')
-            .format(Format.RGBA8)
-            .width(screenWidth)
-            .height(screenHeight)
-            .clear(true)
-            .build();
-    }
 
     if (DEBUG_LIGHT_TILES) {
         pipeline.createImageTexture('texDebug', 'imgDebug')
@@ -402,7 +378,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             1)
         .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
         .exportInt("LIGHTING_ATTENUATION_MODE", options.Lighting_Attenuation_Mode)
-        .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
         .compile();
 
     stagePostOpaque.createComposite("deferred-lighting-final")

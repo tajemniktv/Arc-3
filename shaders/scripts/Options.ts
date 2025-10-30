@@ -21,7 +21,6 @@ export class Options {
     get Lighting_Point_Resolution(): number {return getIntSetting('LIGHTING_POINT_RESOLUTION');}
     get Lighting_Point_RealTime(): number {return getIntSetting('LIGHTING_POINT_REALTIME');}
     get Lighting_Attenuation_Mode(): number {return getIntSetting('LIGHTING_ATTENUATION_MODE');}
-    get Lighting_Point_RealTime(): number {return getIntSetting('LIGHTING_POINT_REALTIME');}
 
     get Shadow_Resolution(): number {return getIntSetting('SHADOW_RESOLUTION');}
     get Shadow_Distance(): number {return getIntSetting('SHADOW_DISTANCE');}
