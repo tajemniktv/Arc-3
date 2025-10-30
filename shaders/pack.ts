@@ -140,12 +140,36 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
-    const texShadowColor = pipeline.createArrayTexture('texShadowColor')
-        .format(Format.RGBA8)
-        .width(renderConfig.shadow.resolution)
-        .height(renderConfig.shadow.resolution)
-        .clearColor(0, 0, 0, 0)
+    const texShadowGB = pipeline.createTexture('texShadowGB')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGB8)
         .build();
+
+    const texShadowFinal = pipeline.createImageTexture('texShadowFinal', 'imgShadowFinal')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA8)
+        .build();
+
+    const texSssGB = pipeline.createTexture('texSssGB')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGB8)
+        .build();
+
+    const texSssFinal = pipeline.createImageTexture('texSssFinal', 'imgSssFinal')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA8)
+        .build();
+
+    // const texShadowColor = pipeline.createArrayTexture('texShadowColor')
+    //     .format(Format.RGBA8)
+    //     .width(renderConfig.shadow.resolution)
+    //     .height(renderConfig.shadow.resolution)
+    //     .clearColor(0, 0, 0, 0)
+    //     .build();
 
     const texWeather = pipeline.createTexture('texWeather')
         .width(screenWidth)
@@ -162,7 +186,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     if (WorldHasSky) {
         texSkyTransmit = pipeline.createTexture('texSkyTransmit')
             .format(Format.RGB16F)
-            .width(256)
+            .width(128)
             .height(64)
             .clear(false)
             .build();
@@ -276,11 +300,26 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .location('objects/discard').compile();
     }
 
-    pipeline.createObjectShader("shadow-sky", Usage.SHADOW)
-        .location('objects/shadow_sky')
-        .target(0, texShadowColor)
-        .blendOff(0)
-        .compile();
+    function shadowSkyShader(name: string, usage: ProgramUsage) {
+        return pipeline.createObjectShader(name, usage)
+            .location('objects/shadow_sky');
+            // .target(0, texShadowColor).blendOff(0);
+    }
+
+    shadowSkyShader("shadow-sky", Usage.SHADOW).compile();
+
+    type ShadowPass = [string, ProgramUsage];
+    [
+        ['shadow-sky-terrain-cutout', Usage.SHADOW_TERRAIN_CUTOUT],
+        ['shadow-sky-terrain-translucent', Usage.SHADOW_TERRAIN_TRANSLUCENT],
+        ['shadow-sky-entity-cutout', Usage.SHADOW_ENTITY_CUTOUT],
+        ['shadow-sky-entity-translucent', Usage.SHADOW_ENTITY_TRANSLUCENT],
+        ['shadow-sky-blockentity-translucent', Usage.SHADOW_BLOCK_ENTITY_TRANSLUCENT],
+    ].forEach((pass: ShadowPass) => {
+        shadowSkyShader(pass[0], pass[1])
+            .exportBool('ALPHATEST_ENABLED', true)
+            .compile();
+    });
 
     if (options.Lighting_Point_Enabled) {
         pipeline.createObjectShader('shadow-point', Usage.POINT)
@@ -323,6 +362,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     
     opaqueObjectShader("entity-cutout", Usage.ENTITY_CUTOUT).compile();
 
+    opaqueObjectShader("blockentity-cutout", Usage.BLOCK_ENTITY).compile();
+
     // opaqueObjectShader("basic-opaque", Usage.PARTICLES_TRANSLUCENT)
     //     .exportBool('RENDER_PARTICLES', true)
     //     .compile();
@@ -342,6 +383,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     translucentObjectShader("entity-translucent", Usage.ENTITY_TRANSLUCENT).compile();
 
+    translucentObjectShader("blockentity-translucent", Usage.BLOCK_ENTITY_TRANSLUCENT).compile();
+
     translucentObjectShader("particles", Usage.PARTICLES)
         .exportBool('RENDER_PARTICLES', true)
         .compile();
@@ -354,6 +397,20 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
     if (WorldHasSky) {
+        stagePostOpaque.createComposite("deferred-shadow-sky")
+            .location("deferred/shadow-sky", "skyShadowSss")
+            .target(0, texShadowGB)
+            .target(1, texSssGB)
+            .compile();
+
+        stagePostOpaque.createCompute("deferred-shadow-sky-filter")
+            .location("deferred/shadow-sky-filter", "filterShadowSss")
+            .workGroups(
+                Math.ceil(screenWidth / 16),
+                Math.ceil(screenHeight / 16),
+                1)
+            .compile();
+
         stagePostOpaque.createComposite("deferred-lighting-sky")
             .location("deferred/lighting-sky", "lightingSky")
             .target(0, texDiffuse)

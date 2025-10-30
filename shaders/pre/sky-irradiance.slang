@@ -6,7 +6,7 @@ import lib.sampling.ERP;
 import lib.sky.common;
 import lib.sky.sample_view;
 
-ConstantBuffer<SceneBuffer> scene;
+StructuredBuffer<SceneBuffer> scene;
 
 
 float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
@@ -42,7 +42,7 @@ float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {
                 cos_theta);
 
             float3 sampleVec = normalize(mul(tangentSample, tbn));
-            float3 skyColor = sampleSkyView(skyPos, sampleVec, scene.SunLocalDir);
+            float3 skyColor = sampleSkyView(skyPos, sampleVec, scene[0].SunLocalDir);
 
             irradiance += skyColor * (cos_theta * sin_theta);
             nrSamples++;

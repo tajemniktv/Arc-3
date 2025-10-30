@@ -82,19 +82,16 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    const float ap_camera_near = 0.05;
-    float ap_camera_far = ap.world.renderDistance * 4.0;
-
     float depth = mainDepthTex[input.globalPos.xy];
-    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap_camera_near, ap_camera_far);
-    float depthInt = depthL / ap_camera_far * uint.maxValue;
+    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.nearPlane, ap.camera.farPlane());
+    float depthInt = depthL / ap.camera.farPlane() * uint.maxValue;
     depthMinInt.min(uint(floor(depthInt)));
     depthMaxInt.max(uint(ceil(depthInt)));
 
     GroupMemoryBarrierWithGroupSync();
 
-    float depthMin = depthMinInt.load() / float(uint.maxValue) * ap_camera_far;
-    float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap_camera_far;
+    float depthMin = depthMinInt.load() / float(uint.maxValue) * ap.camera.farPlane();
+    float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap.camera.farPlane();
 
     if (input.groupIndex < PointLight_MaxCount) {
         PointLight light = ap.lights[input.groupIndex];

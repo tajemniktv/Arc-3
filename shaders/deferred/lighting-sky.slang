@@ -8,35 +8,34 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 import lib.sky.sample_view;
-import lib.shadow;
 
 extern static const bool TAA_Enabled;
 
+StructuredBuffer<SceneBuffer> scene;
+
+Sampler2D<float> mainDepthTex;
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
-Sampler2D<float> mainDepthTex;
+Sampler2D<float3> texShadowFinal;
+Sampler2D<float3> texSssFinal;
 
 
 struct SurfaceData {
+    float3 skyPos;
     float3 normal;
     float3 f0;
     float roughL;
     float3 tint;
-    // bool is_metal;
-
-    // float3 viewDir;
-    // float NoVm;
 };
 
 struct SkyLightData {
-    float3 skyPos;
     float3 localDir;
     float3 color;
 };
 
 void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData light, SurfaceData surface, float3 viewDir, float NoVm) {
-    float3 transmit = sampleSkyTransmit(light.skyPos, light.localDir);
+    // float3 transmit = sampleSkyTransmit(light.skyPos, light.localDir);
     float3 H = normalize(light.localDir + viewDir);
 
     float NoLm = max(dot(surface.normal, light.localDir), 0.0);
@@ -48,10 +47,10 @@ void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData l
     float3 F_VoH = F_schlickRough(VoHm, surface.f0, surface.roughL);
 
     float D = SampleLightDiffuse(NoVm, NoLm, LoHm, surface.roughL);
-    diffuse += NoLm * D * transmit * light.color * saturate(1.0 - F_VoH);
+    diffuse += NoLm * D * light.color * saturate(1.0 - F_VoH);
 
     float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, surface.roughL);
-    specular += NoLm * S * transmit * light.color;// * surface.tint;
+    specular += NoLm * S * light.color;// * surface.tint;
 }
 
 
@@ -98,56 +97,68 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float occlusion = lightData.b;
 
     SurfaceData surface;
+    surface.skyPos = getSkyPosition(localPos);
     surface.normal = tex_normal;
     surface.roughL = roughness*roughness;
     bool is_metal = f0_metal > (229.5/255.0);
     surface.f0 = is_metal ? albedo : f0_metal;
     surface.tint = is_metal ? albedo : 1.0;
 
-    SkyLightData light;
-    light.skyPos = getSkyPosition(localPos);
+    // SkyLightData light;
+    // light.skyPos = getSkyPosition(localPos);
 
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
-    float viewDist = length(viewPos);
-    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
-    float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
-    float offset_bias = viewDist * 0.002;
+    SkyLightData sun;
+    sun.localDir = scene[0].SunLocalDir;
+    sun.color = scene[0].SunColor * sampleSkyTransmit(surface.skyPos, sun.localDir);
 
-    float3 shadowLocalPos = geo_normal * normal_bias + localPos;
-    float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
-    shadowViewPos.z += offset_bias;
+    SkyLightData moon;
+    moon.localDir = scene[0].MoonLocalDir;
+    moon.color = scene[0].MoonColor * sampleSkyTransmit(surface.skyPos, moon.localDir);
+
+    // float viewDist = length(viewPos);
+    // float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
+    // float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
+    // float offset_bias = viewDist * 0.002;
+
+    // float3 shadowLocalPos = geo_normal * normal_bias + localPos;
+    // float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
+    // shadowViewPos.z += offset_bias;
     
-    const float paddingBlocks = 0.05;
-    int shadowCascade = GetShadowProjection(shadowViewPos, paddingBlocks);
+    // const float paddingBlocks = 0.05;
+    // int shadowCascade = GetShadowProjection(shadowViewPos, paddingBlocks);
 
-    float shadow = 1.0;
-    float sssDepth = 0.0;
-    if (shadowCascade >= 0) {
-        float3 shadowPos = mul3(ap.celestial.projection[shadowCascade], shadowViewPos).xyz * 0.5 + 0.5;
-        shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
-    }
+    // float shadow = 1.0;
+    // float sssDepth = 0.0;
+    // if (shadowCascade >= 0) {
+    //     float3 shadowPos = mul3(ap.celestial.projection[shadowCascade], shadowViewPos).xyz * 0.5 + 0.5;
+    //     shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
+    // }
 
     float3 ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
 
     // float NoLm = max(dot(tex_normal, scene.SkyLightLocalDir), 0.0);
     // float3 sssFinal = sss * (1.0 - NoLm) * exp(-2.0 * (sssDepth+0.0)) * scene.SunColor;
-    // output.diffuse += sssFinal;
+    // TODO: LIGHT COLOR IS WRONG
+    float3 sssFinal = texSssFinal[uv] * (sun.color + moon.color);
+    output.diffuse += sssFinal / PI;
     
-    light.color = scene[0].SunColor;
-    light.localDir = scene[0].SunLocalDir;
-    SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
+    
+    float3 shadow = texShadowFinal[uv];
+    bool shadowIsSun = dot(ap.celestial.position, ap.celestial.sunPosition) > 0.0;
 
-    light.color = scene[0].MoonColor;
-    light.localDir = scene[0].MoonLocalDir;
-    SampleCelestial(output.diffuse, output.specular, light, surface, viewLocalDir, NoVm);
+    sun.color *= shadowIsSun ? shadow : 1.0;
+    SampleCelestial(output.diffuse, output.specular, sun, surface, viewLocalDir, NoVm);
 
-    output.diffuse = output.diffuse / PI * shadow + ambient;
-    output.specular = output.specular * shadow;
+    moon.color *= shadowIsSun ? 1.0 : shadow;
+    SampleCelestial(output.diffuse, output.specular, moon, surface, viewLocalDir, NoVm);
+
+    output.diffuse = output.diffuse / PI + ambient;
+    output.specular = output.specular;
 
     if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
 
-    // TODO: sky reflections
     float3 skyPos = getSkyPosition(localPos);
     float3 fragViewDir = normalize(viewPos);
     float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);

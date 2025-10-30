@@ -1,12 +1,11 @@
 import buffers.scene;
 import lib.common;
 import lib.sky.common;
+import lib.sky.scattering;
 import lib.sky.sample_transmit;
 import lib.sky.sample_multiscatter;
 
 static const int numScatteringSteps = 32;
-
-ConstantBuffer<SceneBuffer> scene;
 
 
 float3 raymarchScattering(float3 pos, float3 rayDir, float3 sunDir, float tMax, int numSteps) {
@@ -35,8 +34,8 @@ float3 raymarchScattering(float3 pos, float3 rayDir, float3 sunDir, float tMax, 
         
         float3 sampleTransmittance = exp(-dt*extinction);
 
-        float3 sunTransmittanceLux = sampleSkyTransmit(newPos, sunDir) * scene.SunColor;
-        float3 moonTransmittanceLux = sampleSkyTransmit(newPos, -sunDir) * scene.MoonColor;
+        float3 sunTransmittanceLux = sampleSkyTransmit(newPos, sunDir) * scene[0].SunColor;
+        float3 moonTransmittanceLux = sampleSkyTransmit(newPos, -sunDir) * scene[0].MoonColor;
 
         float3 psiMS = sampleSkyMultiScatter(newPos, sunDir) + Sky_MinLight;
         //vec3 psiMS_moon = getValFromMultiScattLUT(texSkyMultiScatter, newPos, sunDir);
@@ -89,7 +88,7 @@ float3 bakeSkyView(float2 pos : SV_Position) : SV_Target0 {
     float cosAltitude = cos(altitudeAngle);
     float3 rayDir = float3(cosAltitude*sin(azimuthAngle), sin(altitudeAngle), -cosAltitude*cos(azimuthAngle));
     
-    float sunAltitude = (0.5*PI) - acos(dot(scene.SunLocalDir, up));
+    float sunAltitude = (0.5*PI) - acos(dot(scene[0].SunLocalDir, up));
     float3 sunDirEx = float3(0.0, sin(sunAltitude), -cos(sunAltitude));
     
     float atmoDist = rayIntersectSphere(skyPos, rayDir, atmosphereRadiusMM);
