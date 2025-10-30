@@ -55,9 +55,7 @@ float GetLightAttenuation(const in float lightDist, const in float lightRange, c
     }
 }
 
-// ============================================================================
-// BRDF Functions (Original)
-// ============================================================================
+// Functions 
 
 // Disney Diffuse BRDF
 float SampleLightDiffuse(const in float NoV, const in float NoL, const in float LoH, const in float roughL) {
@@ -94,3 +92,4 @@ float3 SampleLightSpecular(float NoL, float NoH, float NoV, float3 F_VoH, float 
     return numerator / denominator;
 }
 
+// Clearcoat, sheen, and other extensions can be added here, generally following the Disney BRDF model (Burley 2012).

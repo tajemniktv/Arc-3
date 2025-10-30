@@ -6,14 +6,14 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx('#f39849', 'campfire');
     setLightColorEx('#935b2c', 'cave_vines', "cave_vines_plant");
     setLightColorEx('#29d4cf', 'conduit');
-    setLightColorEx('#d39f6d', 'copper_bulb', 'waxed_copper_bulb');
-    setLightColorEx('#d39255', 'exposed_copper_bulb', 'waxed_exposed_copper_bulb');
-    setLightColorEx('#cf833a', 'weathered_copper_bulb', 'waxed_weathered_copper_bulb');
-    setLightColorEx('#87480b', 'oxidized_copper_bulb', 'waxed_oxidized_copper_bulb');
-    setLightColorEx('#d39f6d', 'copper_lantern', 'waxed_copper_lantern');
-    setLightColorEx('#d39255', 'exposed_copper_lantern', 'waxed_exposed_copper_lantern');
-    setLightColorEx('#cf833a', 'weathered_copper_lantern', 'waxed_weathered_copper_lantern');
-    setLightColorEx('#87480b', 'oxidized_copper_lantern', 'waxed_oxidized_copper_lantern');
+    setLightColorEx('#d39f6d', 'copper_bulb', 'waxed_copper_bulb'); // Debatable
+    setLightColorEx('#d39255', 'exposed_copper_bulb', 'waxed_exposed_copper_bulb'); // Debatable
+    setLightColorEx('#cf833a', 'weathered_copper_bulb', 'waxed_weathered_copper_bulb'); // Debatable
+    setLightColorEx('#87480b', 'oxidized_copper_bulb', 'waxed_oxidized_copper_bulb'); // Debatable
+    setLightColorEx('#bbd9b3', 'copper_lantern', 'waxed_copper_lantern');
+    setLightColorEx('#82b97d', 'exposed_copper_lantern', 'waxed_exposed_copper_lantern');
+    setLightColorEx('#68a464', 'weathered_copper_lantern', 'waxed_weathered_copper_lantern');
+    setLightColorEx('#275427', 'oxidized_copper_lantern', 'waxed_oxidized_copper_lantern');
     setLightColorEx('#7f17a8', 'crying_obsidian', 'respawn_anchor');
     setLightColorEx('#371559', 'enchanting_table');
     setLightColorEx('#3d4d59', 'ender_chest');
