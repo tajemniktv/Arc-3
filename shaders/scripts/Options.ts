@@ -32,4 +32,5 @@ export class Options {
     get Debug_Material(): number {return getIntSetting('DEBUG_MATERIAL');}
     get Debug_WhiteWorld(): boolean {return getBoolSetting('DEBUG_WHITEWORLD');}
     get Debug_Histogram(): boolean {return getBoolSetting('DEBUG_HISTOGRAM');}
+    get Debug_LightTiles(): boolean {return getBoolSetting('DEBUG_LIGHT_TILES');}
 }

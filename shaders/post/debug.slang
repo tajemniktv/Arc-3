@@ -4,6 +4,7 @@ import lib.common;
 
 extern static const int DEBUG_MATERIAL;
 extern static const bool DEBUG_HISTOGRAM;
+extern static const bool DEBUG_LIGHT_TILES;
 extern static const float Scene_PostExposureMin;
 extern static const float Scene_PostExposureMax;
 
@@ -19,6 +20,7 @@ Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 Sampler1D<uint> texHistogram;
+Sampler2D<float4> texDebug;
 
 [[shader("fragment")]]
 float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
@@ -67,6 +69,13 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
             // float shit2 = saturate(unmix(Scene_PostExposureMin, Scene_PostExposureMax, log2(Scene_AvgExposure) + Post_ExposureOffset));
             // if (abs(previewCoord.x - shit2) < 0.008)
             //     color.b = 1.0 - color.b;
+        }
+    }
+
+    if (DEBUG_LIGHT_TILES) {
+        float4 debugColor = texDebug[uv];
+        if (debugColor.a > 0.0) {
+            color = debugColor;
         }
     }
 

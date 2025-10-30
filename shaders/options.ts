@@ -47,6 +47,7 @@ export function setupOptions() {
             .add(asIntRange('DEBUG_MATERIAL', 0, 0, 5, 1, true))
             .add(asBool('DEBUG_WHITEWORLD', false, true))
             .add(asBool('DEBUG_HISTOGRAM', false, true))
+            .add(asBool('DEBUG_LIGHT_TILES', false, true))
             .build())
         .build();
 }

@@ -8,7 +8,6 @@ const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
-const DEBUG_LIGHT_TILES = true;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
@@ -210,7 +209,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clear(false)
         .build();
 
-    if (DEBUG_LIGHT_TILES) {
+    if (options.Debug_LightTiles) {
         pipeline.createImageTexture('texDebug', 'imgDebug')
             .format(Format.RGBA8)
             .width(screenWidth)
@@ -376,7 +375,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenWidth / 16.0),
             Math.ceil(screenHeight / 16.0),
             1)
-        .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
+        .exportBool('DEBUG_LIGHT_TILES', options.Debug_LightTiles)
         .exportInt("LIGHTING_ATTENUATION_MODE", options.Lighting_Attenuation_Mode)
         .compile();
 
@@ -535,13 +534,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    if (options.Debug_Material > 0 || options.Debug_Histogram || DEBUG_LIGHT_TILES) {
+    if (options.Debug_Material > 0 || options.Debug_Histogram || options.Debug_LightTiles) {
         postRender.createComposite("debug")
             .location("post/debug", "renderDebugOverlay")
             .target(0, finalFlipper.getWriteTexture())
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .exportInt('DEBUG_MATERIAL', options.Debug_Material)
             .exportBool('DEBUG_HISTOGRAM', options.Debug_Histogram)
+            .exportBool('DEBUG_LIGHT_TILES', options.Debug_LightTiles)
             .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
             .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();
