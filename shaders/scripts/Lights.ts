@@ -9,7 +9,7 @@ export function ApplyLightColors(coloredCandles: boolean) {
     setLightColorEx('#d39f6d', 'copper_bulb', 'waxed_copper_bulb'); // Debatable
     setLightColorEx('#d39255', 'exposed_copper_bulb', 'waxed_exposed_copper_bulb'); // Debatable
     setLightColorEx('#cf833a', 'weathered_copper_bulb', 'waxed_weathered_copper_bulb'); // Debatable
-    setLightColorEx('#87480b', 'oxidized_copper_bulb', 'waxed_oxidized_copper_bulb'); // Debatable
+    setLightColorEx('#87480b', 'oxidized_copper_bulb', 'waxed_oxidized_copper_bulb'); // Debatable (This one doesn't emit light???)
     setLightColorEx('#bbd9b3', 'copper_lantern', 'waxed_copper_lantern');
     setLightColorEx('#82b97d', 'exposed_copper_lantern', 'waxed_exposed_copper_lantern');
     setLightColorEx('#68a464', 'weathered_copper_lantern', 'waxed_weathered_copper_lantern');
