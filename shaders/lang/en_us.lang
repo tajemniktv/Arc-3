@@ -23,6 +23,9 @@ option.MATERIAL_PARALLAX_SAMPLES=Sample Count
 option.MATERIAL_PARALLAX_OPTIMIZE=Optimize Samples
 option.MATERIAL_PARALLAX_OPTIMIZE.comment=Attempts to increase quality by focusing sample distribution. May not always work well.
 
+option.MATERIAL_PARALLAX_BLOCKENTITIES=Block Entities (Signs)
+option.MATERIAL_PARALLAX_BLOCKENTITIES.comment=Enable parallax for block entities like signs, item frames, etc. Disable if text on signs looks wrong.
+
 
 screen.LIGHTING=Lighting
 

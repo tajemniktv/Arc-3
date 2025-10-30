@@ -270,10 +270,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
     discardShader("cloud-discard", Usage.CLOUDS);
 
-    function opaqueObjectShader(name: string, usage: ProgramUsage) {
+    function opaqueObjectShader(name: string, usage: ProgramUsage, parallaxOverride?: boolean) {
+        const parallaxEnabled = parallaxOverride !== undefined ? parallaxOverride : options.Material_Parallax_Enabled;
         const shader = pipeline.createObjectShader(name, usage)
             .location("objects/opaque")
-            .exportBool('Parallax_Enabled', options.Material_Parallax_Enabled)
+            .exportBool('Parallax_Enabled', parallaxEnabled)
             .exportInt('Parallax_Type', options.Material_Parallax_Type)
             .exportFloat('Parallax_Depth', options.Material_Parallax_Depth * 0.01)
             .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
@@ -286,7 +287,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         return shader;
     }
 
-    opaqueObjectShader("basic-opaque", Usage.BASIC).compile();
+    opaqueObjectShader("basic-opaque", Usage.BASIC, options.Material_Parallax_Enabled && options.Material_Parallax_BlockEntities)
+        .compile();
     
     opaqueObjectShader("terrain-solid", Usage.TERRAIN_SOLID)
         .exportBool('RENDER_TERRAIN', true)

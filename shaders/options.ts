@@ -10,6 +10,7 @@ export function setupOptions() {
                 .add(asIntRange('MATERIAL_PARALLAX_DEPTH', 25, 5, 100, 5, true))
                 .add(asIntRange('MATERIAL_PARALLAX_SAMPLES', 32, 8, 128, 8, true))
                 .add(asBool('MATERIAL_PARALLAX_OPTIMIZE', true, true))
+                .add(asBool('MATERIAL_PARALLAX_BLOCKENTITIES', false, true))
                 .build())
             .build())
         .add(new Page('LIGHTING')
