@@ -95,6 +95,8 @@ FragmentOutput fragmentMain(VertexOutput input) {
     float4 color = albedo;
     color.rgb = color.rgb * diffuse + specular;
 
+    color.rgb *= color.a;
+
     FragmentOutput output;
     output.color = color;
     //output.velocity = 0.0;

@@ -23,9 +23,9 @@ Sampler1D<uint> texHistogram;
 [[shader("fragment")]]
 float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
     float4 color = float4(0.0);
+    uint2 uv = uint2(pos);
 
     if (DEBUG_MATERIAL > 0) {
-        uint2 uv = uint2(pos);
         color.a = 1.0;
 
         switch (DEBUG_MATERIAL) {
