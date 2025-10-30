@@ -44,6 +44,7 @@ export function configureRenderer(config: RendererConfig): void {
     config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
     config.pointLight.resolution = options.Lighting_Point_Resolution;
     config.pointLight.realTimeCount = options.Lighting_Point_RealTime;
+    config.pointLight.maxUpdates = options.Lighting_Point_RealTime; // Player shadow now updates each frame. Performance cost.
     config.pointLight.cacheRealTimeTerrain = false;
     config.pointLight.nearPlane = 0.1;
     config.pointLight.farPlane = 16.0;
