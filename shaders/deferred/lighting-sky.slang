@@ -8,6 +8,7 @@ import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 import lib.sky.sample_view;
+import lib.sky.sample_light;
 
 extern static const bool TAA_Enabled;
 
@@ -19,39 +20,6 @@ Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 Sampler2D<float3> texShadowFinal;
 Sampler2D<float3> texSssFinal;
-
-
-struct SurfaceData {
-    float3 skyPos;
-    float3 normal;
-    float3 f0;
-    float roughL;
-    float3 tint;
-};
-
-struct SkyLightData {
-    float3 localDir;
-    float3 color;
-};
-
-void SampleCelestial(inout float3 diffuse, inout float3 specular, SkyLightData light, SurfaceData surface, float3 viewDir, float NoVm) {
-    // float3 transmit = sampleSkyTransmit(light.skyPos, light.localDir);
-    float3 H = normalize(light.localDir + viewDir);
-
-    float NoLm = max(dot(surface.normal, light.localDir), 0.0);
-    float NoHm = max(dot(surface.normal, H), 0.0);
-    float LoHm = max(dot(light.localDir, H), 0.0);
-    float VoHm = max(dot(viewDir, H), 0.0);
-
-    //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
-    float3 F_VoH = F_schlickRough(VoHm, surface.f0, surface.roughL);
-
-    float D = SampleLightDiffuse(NoVm, NoLm, LoHm, surface.roughL);
-    diffuse += NoLm * D * light.color * saturate(1.0 - F_VoH);
-
-    float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, surface.roughL);
-    specular += NoLm * S * light.color;// * surface.tint;
-}
 
 
 struct FragmentOutput {
@@ -106,11 +74,11 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
-    SkyLightData sun;
+    CelestialLight sun;
     sun.localDir = scene[0].SunLocalDir;
     sun.color = scene[0].SunColor * sampleSkyTransmit(surface.skyPos, sun.localDir);
 
-    SkyLightData moon;
+    CelestialLight moon;
     moon.localDir = scene[0].MoonLocalDir;
     moon.color = scene[0].MoonColor * sampleSkyTransmit(surface.skyPos, moon.localDir);
 
@@ -135,14 +103,13 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
 
     if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
 
-    float3 skyPos = getSkyPosition(localPos);
     float3 fragViewDir = normalize(viewPos);
     float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);
     float3 reflectViewDir = reflect(fragViewDir, viewNormal);
     float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
     reflectLocalDir = normalize(reflectLocalDir);
 
-    float3 skyColor = sampleSkyView(skyPos, reflectLocalDir, scene[0].SunLocalDir);
+    float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
     output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
     //output.diffuse *= 1.0 - F_NoV;

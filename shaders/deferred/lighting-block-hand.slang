@@ -21,7 +21,7 @@ struct FragmentOutput {
 };
 
 [[shader("fragment")]]
-FragmentOutput lightingBlock(float2 pos : SV_Position) {
+FragmentOutput lightingBlockHand(float2 pos : SV_Position) {
     FragmentOutput output;
     uint2 uv = uint2(pos);
 
@@ -52,6 +52,8 @@ FragmentOutput lightingBlock(float2 pos : SV_Position) {
 
     output.diffuse = lmcoord_x / PI * BLOCK_LUX;
     output.specular = 0.0;
+
+    // TODO: hand light
 
     return output;
 }
