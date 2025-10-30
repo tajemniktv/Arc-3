@@ -12,6 +12,7 @@ extern static const float Lighting_Ambient_Brightness;
 extern static const float Lighting_Ambient_Red;
 extern static const float Lighting_Ambient_Green;
 extern static const float Lighting_Ambient_Blue;
+extern static const bool Lighting_GI_Enabled;
 
 ConstantBuffer<SceneBuffer> scene;
 // ConstantBuffer<SettingsBuffer> settings;
@@ -21,6 +22,7 @@ Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 Sampler2D<float3> texDiffuse;
 Sampler2D<float3> texSpecular;
+Sampler2D<float4> texIndirectDiffuse;
 Sampler2D<float> mainDepthTex;
 
 
@@ -53,12 +55,16 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         float4 albedo = texAlbedoGB[uv];
         float3 diffuse = texDiffuse[uv];
         float3 specular = texSpecular[uv];
+        float3 indirect = 0.0;
+        if (Lighting_GI_Enabled) {
+            indirect = texIndirectDiffuse[uv].rgb;
+        }
         float emission = mat_emission(specularData) * BLOCK_LUX;
 
         albedo.rgb = RgbToLinear(albedo.rgb);
         if (Debug_WhiteWorld) albedo.rgb = 0.85;
 
-        color = albedo.rgb * (diffuse + emission + ambient) + specular;
+        color = albedo.rgb * (diffuse + indirect + emission + ambient) + specular;
     }
 
     return float4(color, 1.0);

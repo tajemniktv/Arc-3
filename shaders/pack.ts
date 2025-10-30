@@ -15,6 +15,12 @@ let texFinalPrevRef: ActiveTextureReference | undefined;
 let imgFinalPrevRef: ActiveTextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
 
+let texIndirectA: BuiltTexture | undefined;
+let texIndirectB: BuiltTexture | undefined;
+let texIndirectHistoryRef: ActiveTextureReference | undefined;
+let texIndirectCurrentRef: ActiveTextureReference | undefined;
+let imgIndirectRef: ActiveTextureReference | undefined;
+
 let _renderConfig: RendererConfig;
 
 
@@ -227,6 +233,36 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .format(Format.RGBA16F)
         .build();
 
+    texIndirectA = pipeline.createImageTexture('texIndirectDiffuseA', 'imgIndirectDiffuseA')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texIndirectB = pipeline.createImageTexture('texIndirectDiffuseB', 'imgIndirectDiffuseB')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texIndirectHistoryRef = pipeline.createTextureReference('texIndirectHistory', null, screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+    texIndirectCurrentRef = pipeline.createTextureReference('texIndirectDiffuse', null, screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+    imgIndirectRef = pipeline.createTextureReference(null, 'imgIndirectDiffuse', screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+
+    if (texIndirectHistoryRef && texIndirectA) {
+        texIndirectHistoryRef.pointTo(texIndirectA);
+    }
+
+    if (texIndirectCurrentRef && imgIndirectRef && texIndirectB) {
+        texIndirectCurrentRef.pointTo(texIndirectB);
+        imgIndirectRef.pointTo(texIndirectB);
+    }
+
     pipeline.createImageTexture('texHistogram', 'imgHistogram')
         .format(Format.R32UI)
         .width(256)
@@ -437,11 +473,27 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportInt("LIGHTING_ATTENUATION_MODE", options.Lighting_Attenuation_Mode)
         .compile();
 
+    if (texIndirectHistoryRef && texIndirectCurrentRef && imgIndirectRef && options.Lighting_GI_Enabled) {
+        stagePostOpaque.createCompute("deferred-lighting-gi")
+            .location("deferred/lighting-gi", "buildIndirectDiffuse")
+            .workGroups(
+                Math.ceil(screenWidth / 16.0),
+                Math.ceil(screenHeight / 16.0),
+                1)
+            .exportInt('Lighting_GI_SampleCount', options.Lighting_GI_SampleCount)
+            .exportFloat('Lighting_GI_Radius', options.Lighting_GI_Radius)
+            .exportFloat('Lighting_GI_Strength', options.Lighting_GI_Strength)
+            .exportFloat('Lighting_GI_TemporalResponse', options.Lighting_GI_TemporalResponse)
+            .exportFloat('Lighting_GI_HistoryMax', options.Lighting_GI_HistoryMax)
+            .compile();
+    }
+
     stagePostOpaque.createComposite("deferred-lighting-final")
         .location("deferred/lighting-final", "lightingFinal")
         .target(0, finalFlipper.getWriteTexture())
         .exportFloat("Lighting_Ambient_Brightness", options.Lighting_Ambient_Brightness)
         .exportFloat("Lighting_Ambient_Red", options.Lighting_Ambient_Red)
+        .exportBool('Lighting_GI_Enabled', options.Lighting_GI_Enabled)
         .exportFloat("Lighting_Ambient_Green", options.Lighting_Ambient_Green)
         .exportFloat("Lighting_Ambient_Blue", options.Lighting_Ambient_Blue)
         .compile();
@@ -630,6 +682,16 @@ export function beginFrame(state : WorldState) : void {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
+    }
+
+    if (texIndirectHistoryRef && texIndirectCurrentRef && imgIndirectRef && texIndirectA && texIndirectB) {
+        const altGi = state.currentFrame() % 2 == 1;
+        const historyTexture = altGi ? texIndirectA : texIndirectB;
+        const writeTexture = altGi ? texIndirectB : texIndirectA;
+
+        texIndirectHistoryRef.pointTo(historyTexture);
+        texIndirectCurrentRef.pointTo(writeTexture);
+        imgIndirectRef.pointTo(writeTexture);
     }
 
     settings.uploadData();
