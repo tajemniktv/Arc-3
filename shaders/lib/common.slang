@@ -1,3 +1,5 @@
+import aperture;
+
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;
 
@@ -25,6 +27,19 @@ float3 maxOf(float3 x, float3 y, float3 z) {
 // T maxOf<T>(const in T x, const in T y, const in T z) where T: IArithmetic {
 //     return max(x, max(y, z));
 // }
+
+T pow2<T>(const in T value) where T: IArithmetic {
+    return value*value;
+}
+
+T pow3<T>(const in T value) where T: IArithmetic {
+    return value*value*value;
+}
+
+T pow4<T>(const in T value) where T: IArithmetic {
+    T sq = value*value;
+    return sq*sq;
+}
 
 T sumOf<T>(const in vector<T, 3> vec) where T: IArithmetic {
     return vec.x + vec.y + vec.z;
@@ -72,4 +87,12 @@ float3 RgbToLinear(const in float3 color) {
     float3 lower = color / 12.92;
 
     return lerp(lower, higher, is_high);
+}
+
+extension CameraData {
+    static const float nearPlane = 0.05;
+    
+    float farPlane() {
+        return ap.world.renderDistance * 4.0;
+    }
 }

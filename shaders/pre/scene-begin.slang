@@ -1,5 +1,6 @@
 import aperture;
 import buffers.scene;
+import buffers.sky;
 import lib.common;
 import lib.sky.common;
 
@@ -34,4 +35,6 @@ void beginScene() {
         scene[0].shadowViewMin[i] = mul3(ap.celestial.projectionInv[i], float3(-1.0, -1.0, 0.0)).xy;
         scene[0].shadowViewMax[i] = mul3(ap.celestial.projectionInv[i], float3( 1.0,  1.0, 0.0)).xy;
     }
+
+    // lerp(skyClear, skyRain, ap.world.rainStrength, scene[0].sky);
 }

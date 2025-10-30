@@ -125,10 +125,9 @@ FragmentOutput fragmentMain(VertexOutput input) {
     int shadowCascade = GetShadowProjection(shadowViewPos, paddingBlocks);
 
     float shadow = 1.0;
-    float sssDepth = 0.0;
     if (shadowCascade >= 0) {
         float3 shadowPos = mul3(ap.celestial.projection[shadowCascade], shadowViewPos).xyz * 0.5 + 0.5;
-        shadow = SampleShadow(shadowPos, shadowCascade, sssDepth);
+        shadow = SampleShadow(shadowPos, shadowCascade);
     }
 
     float3 skyPos = getSkyPosition(input.localPos);

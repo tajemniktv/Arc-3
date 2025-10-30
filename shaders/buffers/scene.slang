@@ -1,3 +1,5 @@
+import buffers.sky;
+
 extern static const int SHADOW_CASCADE_COUNT;
 
 struct SceneBuffer {
@@ -11,4 +13,6 @@ struct SceneBuffer {
 
     float2 shadowViewMin[SHADOW_CASCADE_COUNT]; // 2*4
     float2 shadowViewMax[SHADOW_CASCADE_COUNT]; // 2*4
+
+    SkyParameters sky;
 };

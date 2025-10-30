@@ -1,4 +1,5 @@
 import aperture;
+import buffers.scene;
 import buffers.settings;
 import lib.common;
 import lib.hg;
@@ -6,6 +7,7 @@ import lib.hg;
 
 ConstantBuffer<SettingsBuffer> settings;
 
+static const uint2 skyTransmitDimensions = uint2(128, 64);
 static const uint2 skyViewDimensions = 256;
 static const uint2 skyIrradianceDimensions = 32;
 
@@ -14,15 +16,6 @@ static const float groundRadiusMM = 6.371;
 static const float atmosphereRadiusMM = 0.100 + groundRadiusMM;
 
 static const float3 groundAlbedo = 0.3;
-
-// These are per megameter.
-static const float3 rayleighScatteringBase = float3(6.605, 12.344, 29.412);
-static const float rayleighAbsorptionBase = 0.0;
-
-static const float mieScatteringBase = 3.996;
-static const float mieAbsorptionBase = 4.4;
-
-static const float3 ozoneAbsorptionBase = float3(0.850, 1.581, 0.285);
 
 static const float SUN_LUMINANCE = 2000.0;//1.6e6;//1.6e9;
 static const float MOON_LUMINANCE = 2.8;
@@ -67,42 +60,6 @@ float getMiePhase(float cosTheta) {
 float getRayleighPhase(float cosTheta) {
     const float k = 3.0 / (16.0*PI);
     return k * (1.0 + (cosTheta*cosTheta));
-}
-
-//void getScatteringValues(vec3 pos, float stepDist, float sampleDensity, out vec3 rayleighScattering, out float mieScattering, out vec3 extinction) {
-//    float altitudeKM = (length(pos)-groundRadiusMM) * 1000.0;
-//
-//    // Note: Paper gets these switched up.
-//    float rayleighDensity = stepDist * 0.0001 * exp(-altitudeKM/8.0);
-//    float mieDensity = stepDist*sampleDensity * 0.0001 * exp(-altitudeKM/1.2);
-//
-//    rayleighScattering = rayleighScatteringBase*rayleighDensity;
-//    float rayleighAbsorption = rayleighAbsorptionBase*rayleighDensity;
-//
-//    mieScattering = mieScatteringBase*mieDensity;
-//    float mieAbsorption = mieAbsorptionBase*mieDensity;
-//
-//    vec3 ozoneAbsorption = ozoneAbsorptionBase * max(0.0, 1.0 - abs(altitudeKM-25.0)/15.0);
-//
-//    extinction = rayleighScattering + rayleighAbsorption + mieScattering + mieAbsorption + ozoneAbsorption;
-//}
-
-void getScatteringValues(float3 pos, out float3 rayleighScattering, out float mieScattering, out float3 extinction) {
-    float altitudeKM = (length(pos)-groundRadiusMM) * 1000.0;
-
-    // Note: Paper gets these switched up.
-    float rayleighDensity = exp(-altitudeKM/8.0);
-    float mieDensity = exp(-altitudeKM/1.2);
-
-    rayleighScattering = rayleighScatteringBase*rayleighDensity;
-    float rayleighAbsorption = rayleighAbsorptionBase*rayleighDensity;
-
-    mieScattering = mieScatteringBase*mieDensity;
-    float mieAbsorption = mieAbsorptionBase*mieDensity;
-
-    float3 ozoneAbsorption = ozoneAbsorptionBase * max(0.0, 1.0 - abs(altitudeKM-25.0)/15.0);
-
-    extinction = rayleighScattering + rayleighAbsorption + mieScattering + mieAbsorption + ozoneAbsorption;
 }
 
 // From https://gamedev.stackexchange.com/questions/96459/fast-ray-sphere-collision-code.
