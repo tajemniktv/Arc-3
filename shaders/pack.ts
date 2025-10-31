@@ -8,7 +8,7 @@ const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
-const Lighting_LPV_GridResolution = 32;
+const Lighting_LPV_GridResolution = 128;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;

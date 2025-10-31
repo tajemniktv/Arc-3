@@ -11,7 +11,7 @@ extern static const float Lighting_LPV_MaxEnergy;
 
 ConstantBuffer<SceneBuffer> scene;
 
-static const uint LPV_GRID_RESOLUTION = 32u;
+static const uint LPV_GRID_RESOLUTION = 128u;
 static const float3 LPV_GRID_SIZE = float3(LPV_GRID_RESOLUTION, LPV_GRID_RESOLUTION, LPV_GRID_RESOLUTION);
 
 [[vk::image_format("rgba16f")]]
