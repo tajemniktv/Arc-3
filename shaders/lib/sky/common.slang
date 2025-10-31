@@ -22,6 +22,10 @@ static const float MOON_LUMINANCE = 2.2;
 
 static const float Sky_MinLight = 0.0;
 
+// static const float GoldenAngle = PI * (3.0 - sqrt(5.0));
+// static const float PHI = (1.0 + sqrt(5.0)) / 2.0;
+
+
 
 float safeacos(const in float x) {
     return acos(clamp(x, -1.0, 1.0));

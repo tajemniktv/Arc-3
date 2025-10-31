@@ -1,12 +1,10 @@
 import aperture;
 import buffers.scene;
 import lib.common;
-import lib.noise.hash;
 import lib.material.pbr;
 import lib.sampling.IGN;
 import lib.shadow;
 
-extern static const int SHADOW_PCF_SAMPLES = 3;
 extern static const float SSS_BlockRadius = 1.4;
 extern static const float SSS_MaxDist = 6.0;
 extern static const bool TAA_Enabled;
@@ -15,54 +13,6 @@ Sampler2D<float> mainDepthTex;
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
-
-
-float3 GetProjectionScale(const in int cascade) {
-    return float3(0.5, 0.5, -0.5) * float3(
-        ap.celestial.projection[cascade][0].x,
-        ap.celestial.projection[cascade][1].y,
-        ap.celestial.projection[cascade][2].z);
-}
-
-// [coverage, distance]
-float2 SSS_PCF(const in float3 shadowPos, const in int cascade, const in float2 pixelRadius, const in float bias_scale, const in float sss, const in float dither) {
-    float seed_pos = hash13(shadowPos * 999.0);
-
-    float angle = fract(dither) * (2.0*PI);
-    float s = sin(angle);
-    float c = cos(angle);
-    float2x2 rotation = float2x2(
-         c, s,
-        -s, c);
-
-    const float GoldenAngle = PI * (3.0 - sqrt(5.0));
-    const float PHI = (1.0 + sqrt(5.0)) / 2.0;
-
-    float shadowFinal = 0.0;
-    float distFinal = 0.0;
-    for (int i = 0; i < SHADOW_PCF_SAMPLES; i++) {
-        float r = sqrt((i + 0.5) / SHADOW_PCF_SAMPLES);
-        float theta = i * GoldenAngle + PHI;
-
-        float sample_dither = sss * hash13(float3(seed_pos * 999.0, i, ap.timing.frameCounter));
-        float sample_bias = bias_scale * pow3(sample_dither);
-        //shadowViewPos.z += sssDist;
-        
-        float2 pcfDiskOffset = r * float2(cos(theta), sin(theta));
-        float2 pixelOffset = mul(rotation, pcfDiskOffset) * pixelRadius;
-        float3 sampleShadowPos = shadowPos + float3(pixelOffset, sample_bias);
-
-        // shadowFinal += SampleShadow(sampleShadowPos, cascade);
-
-        float3 shadowCoord = float3(sampleShadowPos.xy, cascade);
-        float sampleDepth = solidShadowMap.Sample(shadowCoord).r;
-        distFinal += max(shadowPos.z - sampleDepth, 0.0);
-        shadowFinal += step(shadowPos.z, sampleDepth);
-        // sssDepth = max(shadowPos.z - sampleDepth, 0.0) * zRange;
-    }
-
-    return float2(shadowFinal, distFinal) / SHADOW_PCF_SAMPLES;
-}
 
 
 struct FragmentOutput {
@@ -99,6 +49,14 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
 
     float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
 
+    float dither;
+    if (TAA_Enabled) {
+        dither = InterleavedGradientNoiseTime(uv);
+    }
+    else {
+        dither = InterleavedGradientNoise(uv);
+    }
+
     // Shadows
     float viewDist = length(viewPos);
     float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
@@ -116,7 +74,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
     if (cascade >= 0) {
         float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos).xyz * 0.5 + 0.5;
 
-        output.shadow = SampleShadow(shadowPos, cascade);
+        output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
     }
 
     // SSS
@@ -129,15 +87,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
     if (cascade >= 0) {
         float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos).xyz * 0.5 + 0.5;
 
-        float dither;
-        if (TAA_Enabled) {
-            dither = InterleavedGradientNoiseTime(uv);
-        }
-        else {
-            dither = InterleavedGradientNoise(uv);
-        }
-
-        float3 cascadeScale = GetProjectionScale(cascade);
+        float3 cascadeScale = GetShadowProjectionScale(cascade);
 
         float bias_scale = sss * SSS_MaxDist * cascadeScale.z;
         float2 pixelRadius = blockRadius * cascadeScale.xy;

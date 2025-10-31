@@ -1,10 +1,10 @@
 import {Options} from "./scripts/Options";
+import {Dimensions} from "./scripts/Dimensions";
 import {BufferFlipper} from "./scripts/BufferFlipper";
 import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 import {ApplyLightColors} from "./scripts/Lights";
 
 
-const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
@@ -16,14 +16,19 @@ let texFinalPrevRef: ActiveTextureReference | undefined;
 let imgFinalPrevRef: ActiveTextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
 
+let _dimensions: Dimensions;
 let _renderConfig: RendererConfig;
 
 
 export function configureRenderer(config: RendererConfig): void {
+    const options = new Options();
+
+    _dimensions = new Dimensions(config);
+
     // HACK: allows realtime settings
     _renderConfig = config;
 
-    config.sunPathRotation = 20;
+    config.sunPathRotation = options.Shadow_Angle;
     config.ambientOcclusionLevel = 1.0;
     config.mergedHandDepth = true;
     config.disableShade = true;
@@ -37,10 +42,10 @@ export function configureRenderer(config: RendererConfig): void {
     config.render.moon = false;
     config.render.sun = false;
 
-    config.shadow.enabled = true;
-    config.shadow.cascades = 4;
+    config.shadow.enabled = _dimensions.World_HasSky;
     config.shadow.resolution = options.Shadow_Resolution;
     config.shadow.distance = options.Shadow_Distance;
+    config.shadow.cascades = 4;
 
     config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
     config.pointLight.resolution = options.Lighting_Point_Resolution;
@@ -52,29 +57,14 @@ export function configureRenderer(config: RendererConfig): void {
 
 export function configurePipeline(pipeline: PipelineConfig): void {
     const renderConfig = pipeline.getRendererConfig();
-
-    let WorldHasSky = false;
-    let DimensionId;
-
-    switch (renderConfig.dimension.getPath()) {
-        case 'the_nether':
-            DimensionId = -1;
-            break;
-        case 'the_end':
-            DimensionId = 1;
-            WorldHasSky = true;
-            break;
-        default:
-            DimensionId = 0;
-            WorldHasSky = true;
-            pipeline.importPNGTexture('texMoon', 'textures/moon.png', true, false);
-            break;
-    }
+    const options = new Options();
 
     pipeline.setGlobalExport(pipeline.createExportList()
-        .addInt('DIMENSION', DimensionId)
+        .addInt('DIMENSION', _dimensions.Index)
+        .addBool('World_HasSky', _dimensions.World_HasSky)
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
+        .addInt('Shadow_Resolution', options.Shadow_Resolution)
         .addInt('SHADOW_CASCADE_COUNT', 4)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
@@ -145,50 +135,52 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
-    const texShadowGB = pipeline.createTexture('texShadowGB')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGB8)
-        .build();
-
-    const texShadowFinal = pipeline.createImageTexture('texShadowFinal', 'imgShadowFinal')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGBA8)
-        .build();
-
-    const texSssGB = pipeline.createTexture('texSssGB')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGB8)
-        .build();
-
-    const texSssFinal = pipeline.createImageTexture('texSssFinal', 'imgSssFinal')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGBA8)
-        .build();
-
-    // const texShadowColor = pipeline.createArrayTexture('texShadowColor')
-    //     .format(Format.RGBA8)
-    //     .width(renderConfig.shadow.resolution)
-    //     .height(renderConfig.shadow.resolution)
-    //     .clearColor(0, 0, 0, 0)
-    //     .build();
-
-    const texWeather = pipeline.createTexture('texWeather')
-        .width(screenWidth)
-        .height(screenHeight)
-        .format(Format.RGBA16F)
-        .clearColor(0, 0, 0, 0)
-        .build();
-
     let texSkyTransmit : BuiltTexture | undefined;
     let texSkyMultiScatter : BuiltTexture | undefined;
     let texSkyView : BuiltTexture | undefined;
     let texSkyIrradiance : BuiltTexture | undefined;
+    let texShadowGB: BuiltTexture | undefined;
+    let texSssGB: BuiltTexture | undefined;
+    let texWeather: BuiltTexture | undefined;
+    if (_dimensions.World_HasSky) {
+        texShadowGB = pipeline.createTexture('texShadowGB')
+            .width(screenWidth)
+            .height(screenHeight)
+            .format(Format.RGB8)
+            .build();
 
-    if (WorldHasSky) {
+        pipeline.createImageTexture('texShadowFinal', 'imgShadowFinal')
+            .width(screenWidth)
+            .height(screenHeight)
+            .format(Format.RGBA8)
+            .build();
+
+        texSssGB = pipeline.createTexture('texSssGB')
+            .width(screenWidth)
+            .height(screenHeight)
+            .format(Format.RGB8)
+            .build();
+
+        pipeline.createImageTexture('texSssFinal', 'imgSssFinal')
+            .width(screenWidth)
+            .height(screenHeight)
+            .format(Format.RGBA8)
+            .build();
+
+        // const texShadowColor = pipeline.createArrayTexture('texShadowColor')
+        //     .format(Format.RGBA8)
+        //     .width(renderConfig.shadow.resolution)
+        //     .height(renderConfig.shadow.resolution)
+        //     .clearColor(0, 0, 0, 0)
+        //     .build();
+
+        texWeather = pipeline.createTexture('texWeather')
+            .width(screenWidth)
+            .height(screenHeight)
+            .format(Format.RGBA16F)
+            .clearColor(0, 0, 0, 0)
+            .build();
+
         texSkyTransmit = pipeline.createTexture('texSkyTransmit')
             .format(Format.RGB16F)
             .width(128)
@@ -218,23 +210,23 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
-
     const texDiffuse = pipeline.createImageTexture('texDiffuse', 'imgDiffuse')
         .width(screenWidth)
         .height(screenHeight)
         .format(Format.RGBA16F)
+        .clearColor(0, 0, 0, 0)
         .build();
 
     const texSpecular = pipeline.createImageTexture('texSpecular', 'imgSpecular')
         .width(screenWidth)
         .height(screenHeight)
         .format(Format.RGBA16F)
+        .clearColor(0, 0, 0, 0)
         .build();
 
     pipeline.createImageTexture('texHistogram', 'imgHistogram')
         .format(Format.R32UI)
         .width(256)
-        //.height(1)
         .clear(false)
         .build();
 
@@ -262,7 +254,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    if (WorldHasSky) {
+    if (_dimensions.World_HasSky) {
         setup.createComposite('sky-transmit')
             .location('setup/sky-transmit', 'bakeSkyTransmission')
             .target(0, texSkyTransmit)
@@ -284,7 +276,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    if (WorldHasSky) {
+    if (_dimensions.World_HasSky) {
         preRender.createComposite('sky-view')
             .location('pre/sky-view', 'bakeSkyView')
             .target(0, texSkyView)
@@ -311,7 +303,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             // .target(0, texShadowColor).blendOff(0);
     }
 
-    shadowSkyShader("shadow-sky", Usage.SHADOW).compile();
+    if (_dimensions.World_HasSky) {
+        shadowSkyShader("shadow-sky", Usage.SHADOW).compile();
+    }
 
     type ShadowPass = [string, ProgramUsage];
     [
@@ -398,14 +392,16 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportBool('RENDER_PARTICLES', true)
         .compile();
 
-    pipeline.createObjectShader("weather", Usage.WEATHER)
-        .location("objects/weather")
-        .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-        .compile();
+    if (_dimensions.World_HasSky) {
+        pipeline.createObjectShader("weather", Usage.WEATHER)
+            .location("objects/weather")
+            .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .compile();
+    }
         
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
-    if (WorldHasSky) {
+    if (_dimensions.World_HasSky) {
         stagePostOpaque.createComposite("deferred-shadow-sky")
             .location("deferred/shadow-sky", "skyShadowSss")
             .target(0, texShadowGB)
@@ -615,6 +611,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 }
 
 export function onSettingsChanged(pipeline: PipelineConfig) {
+    const options = new Options();
     const SkyFogSeaLevel = 60.0;
 
     _renderConfig.sunPathRotation = options.Shadow_Angle;
@@ -625,6 +622,8 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 }
 
 export function beginFrame(state : WorldState) : void {
+    const options = new Options();
+    
     if (options.Post_TAA_Enabled) {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
