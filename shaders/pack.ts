@@ -8,12 +8,25 @@ const options = new Options();
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
+const Lighting_LPV_GridResolution = 32;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
 let texFinalPrevRef: ActiveTextureReference | undefined;
 let imgFinalPrevRef: ActiveTextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
+
+let texIndirectA: BuiltTexture | undefined;
+let texIndirectB: BuiltTexture | undefined;
+let texIndirectHistoryRef: ActiveTextureReference | undefined;
+let texIndirectCurrentRef: ActiveTextureReference | undefined;
+let imgIndirectRef: ActiveTextureReference | undefined;
+
+let texLpvA: BuiltTexture | undefined;
+let texLpvB: BuiltTexture | undefined;
+let texLpvHistoryRef: ActiveTextureReference | undefined;
+let texLpvCurrentRef: ActiveTextureReference | undefined;
+let imgLpvRef: ActiveTextureReference | undefined;
 
 let _renderConfig: RendererConfig;
 
@@ -227,6 +240,68 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .format(Format.RGBA16F)
         .build();
 
+    texIndirectA = pipeline.createImageTexture('texIndirectDiffuseA', 'imgIndirectDiffuseA')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texIndirectB = pipeline.createImageTexture('texIndirectDiffuseB', 'imgIndirectDiffuseB')
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texIndirectHistoryRef = pipeline.createTextureReference('texIndirectHistory', null, screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+    texIndirectCurrentRef = pipeline.createTextureReference('texIndirectDiffuse', null, screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+    imgIndirectRef = pipeline.createTextureReference(null, 'imgIndirectDiffuse', screenWidth, screenHeight, 1, Format.RGBA16F)
+        .build();
+
+    if (texIndirectHistoryRef && texIndirectA) {
+        texIndirectHistoryRef.pointTo(texIndirectA);
+    }
+
+    if (texIndirectCurrentRef && imgIndirectRef && texIndirectB) {
+        texIndirectCurrentRef.pointTo(texIndirectB);
+        imgIndirectRef.pointTo(texIndirectB);
+    }
+
+    texLpvA = pipeline.createImageTexture('texLpvRadianceA', 'imgLpvRadianceA')
+        .width(Lighting_LPV_GridResolution)
+        .height(Lighting_LPV_GridResolution)
+        .depth(Lighting_LPV_GridResolution)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texLpvB = pipeline.createImageTexture('texLpvRadianceB', 'imgLpvRadianceB')
+        .width(Lighting_LPV_GridResolution)
+        .height(Lighting_LPV_GridResolution)
+        .depth(Lighting_LPV_GridResolution)
+        .format(Format.RGBA16F)
+        .clear(true)
+        .build();
+
+    texLpvHistoryRef = pipeline.createTextureReference('texLpvRadianceHistory', null, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+        .build();
+    texLpvCurrentRef = pipeline.createTextureReference('texLpvRadiance', null, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+        .build();
+    imgLpvRef = pipeline.createTextureReference(null, 'imgLpvRadiance', Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+        .build();
+
+    if (texLpvHistoryRef && texLpvA) {
+        texLpvHistoryRef.pointTo(texLpvA);
+    }
+
+    if (texLpvCurrentRef && imgLpvRef && texLpvB) {
+        texLpvCurrentRef.pointTo(texLpvB);
+        imgLpvRef.pointTo(texLpvB);
+    }
+
     pipeline.createImageTexture('texHistogram', 'imgHistogram')
         .format(Format.R32UI)
         .width(256)
@@ -437,11 +512,44 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportInt("LIGHTING_ATTENUATION_MODE", options.Lighting_Attenuation_Mode)
         .compile();
 
+    if (texIndirectHistoryRef && texIndirectCurrentRef && imgIndirectRef && options.Lighting_GI_Enabled) {
+        stagePostOpaque.createCompute("deferred-lighting-gi")
+            .location("deferred/lighting-gi", "buildIndirectDiffuse")
+            .workGroups(
+                Math.ceil(screenWidth / 16.0),
+                Math.ceil(screenHeight / 16.0),
+                1)
+            .exportInt('Lighting_GI_SampleCount', options.Lighting_GI_SampleCount)
+            .exportFloat('Lighting_GI_Radius', options.Lighting_GI_Radius)
+            .exportFloat('Lighting_GI_Strength', options.Lighting_GI_Strength)
+            .exportFloat('Lighting_GI_TemporalResponse', options.Lighting_GI_TemporalResponse)
+            .exportFloat('Lighting_GI_HistoryMax', options.Lighting_GI_HistoryMax)
+            .compile();
+    }
+
+    if (texLpvHistoryRef && texLpvCurrentRef && imgLpvRef && options.Lighting_LPV_Enabled) {
+        const lpvGroupCount = Math.ceil(Lighting_LPV_GridResolution / 4.0);
+
+        stagePostOpaque.createCompute("deferred-lighting-lpv")
+            .location("deferred/lighting-lpv", "injectLpvRadiance")
+            .workGroups(lpvGroupCount, lpvGroupCount, lpvGroupCount)
+            .exportBool('Lighting_GI_Enabled', options.Lighting_GI_Enabled)
+            .exportFloat('Lighting_LPV_Range', options.Lighting_LPV_Range)
+            .exportFloat('Lighting_LPV_TemporalBlend', options.Lighting_LPV_Temporal)
+            .exportFloat('Lighting_LPV_Propagation', options.Lighting_LPV_Propagation)
+            .exportFloat('Lighting_LPV_MaxEnergy', options.Lighting_LPV_MaxEnergy)
+            .compile();
+    }
+
     stagePostOpaque.createComposite("deferred-lighting-final")
         .location("deferred/lighting-final", "lightingFinal")
         .target(0, finalFlipper.getWriteTexture())
         .exportFloat("Lighting_Ambient_Brightness", options.Lighting_Ambient_Brightness)
         .exportFloat("Lighting_Ambient_Red", options.Lighting_Ambient_Red)
+        .exportBool('Lighting_GI_Enabled', options.Lighting_GI_Enabled)
+        .exportBool('Lighting_LPV_Enabled', options.Lighting_LPV_Enabled)
+        .exportFloat('Lighting_LPV_Range', options.Lighting_LPV_Range)
+        .exportFloat('Lighting_LPV_Strength', options.Lighting_LPV_Strength)
         .exportFloat("Lighting_Ambient_Green", options.Lighting_Ambient_Green)
         .exportFloat("Lighting_Ambient_Blue", options.Lighting_Ambient_Blue)
         .compile();
@@ -630,6 +738,26 @@ export function beginFrame(state : WorldState) : void {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
+    }
+
+    if (texIndirectHistoryRef && texIndirectCurrentRef && imgIndirectRef && texIndirectA && texIndirectB) {
+        const altGi = state.currentFrame() % 2 == 1;
+        const historyTexture = altGi ? texIndirectA : texIndirectB;
+        const writeTexture = altGi ? texIndirectB : texIndirectA;
+
+        texIndirectHistoryRef.pointTo(historyTexture);
+        texIndirectCurrentRef.pointTo(writeTexture);
+        imgIndirectRef.pointTo(writeTexture);
+    }
+
+    if (texLpvHistoryRef && texLpvCurrentRef && imgLpvRef && texLpvA && texLpvB) {
+        const altLpv = state.currentFrame() % 2 == 1;
+        const historyTexture = altLpv ? texLpvA : texLpvB;
+        const writeTexture = altLpv ? texLpvB : texLpvA;
+
+        texLpvHistoryRef.pointTo(historyTexture);
+        texLpvCurrentRef.pointTo(writeTexture);
+        imgLpvRef.pointTo(writeTexture);
     }
 
     settings.uploadData();

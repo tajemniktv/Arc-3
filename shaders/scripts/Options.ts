@@ -22,6 +22,20 @@ export class Options {
     get Lighting_Point_RealTime(): number {return getIntSetting('LIGHTING_POINT_REALTIME');}
     get Lighting_Attenuation_Mode(): number {return getIntSetting('LIGHTING_ATTENUATION_MODE');}
 
+    get Lighting_GI_Enabled(): boolean {return getBoolSetting('LIGHTING_GI_ENABLED');}
+    get Lighting_GI_SampleCount(): number {return getIntSetting('LIGHTING_GI_SAMPLES');}
+    get Lighting_GI_Radius(): number {return getFloatSetting('LIGHTING_GI_RADIUS');}
+    get Lighting_GI_Strength(): number {return getFloatSetting('LIGHTING_GI_STRENGTH');}
+    get Lighting_GI_TemporalResponse(): number {return getFloatSetting('LIGHTING_GI_TEMPORAL');}
+    get Lighting_GI_HistoryMax(): number {return getFloatSetting('LIGHTING_GI_HISTORY_MAX');}
+
+    get Lighting_LPV_Enabled(): boolean {return getBoolSetting('LIGHTING_LPV_ENABLED');}
+    get Lighting_LPV_Range(): number {return getFloatSetting('LIGHTING_LPV_RANGE');}
+    get Lighting_LPV_Strength(): number {return getFloatSetting('LIGHTING_LPV_STRENGTH');}
+    get Lighting_LPV_Temporal(): number {return getFloatSetting('LIGHTING_LPV_TEMPORAL');}
+    get Lighting_LPV_Propagation(): number {return getFloatSetting('LIGHTING_LPV_PROPAGATION');}
+    get Lighting_LPV_MaxEnergy(): number {return getFloatSetting('LIGHTING_LPV_MAX');}
+
     get Shadow_Resolution(): number {return getIntSetting('SHADOW_RESOLUTION');}
     get Shadow_Distance(): number {return getIntSetting('SHADOW_DISTANCE');}
     get Shadow_Cascade_Count(): number {return getIntSetting('SHADOW_CASCADE_COUNT');}
