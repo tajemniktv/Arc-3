@@ -135,9 +135,6 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float3 diffuse = 0.0;
-    float3 specular = 0.0;
-
     float4 colorData = texAlbedoGB[input.globalPos.xy];
     uint2 normal_data = texNormalGB[input.globalPos.xy];
     uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
@@ -166,7 +163,9 @@ void applyPointLights(ComputeInput input) {
     float3 localSamplePos = normalBias * geo_normal + localPos;
 
     float NoVm = max(dot(tex_normal, viewDir), 0.0);
-    float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
+    // float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
+    float metalness = mat_metalness(f0_metal);
+    float3 f0 = lerp(f0_metal, albedo, metalness);
 
     uint total = counter.load();
 
@@ -176,26 +175,26 @@ void applyPointLights(ComputeInput input) {
         imgDebug[input.globalPos.xy] = float4(color, 1.0);
     }
 
+    float3 diffuse = 0.0;
+    float3 specular = 0.0;
+
     for (uint i = 0; i < total; i++) {
         uint lightIndex = sharedLightList[i];
         PointLight light = ap.lights[lightIndex];
-        BlockData block = ap.blocks[light.block];
+        float3 lightColor = ap.blocks[light.block].lightColor.rgb;
+        uint lightRange = ap.blocks[light.block].emission;
 
         float3 lightOffset = light.position - localSamplePos;
-        uint lightRange = block.emission;
 
         float lightDist = length(lightOffset);
         float3 lightDir = lightOffset / lightDist;
 
-        const float lightRadius = 0.5;
+        const float lightRadius = 0.5; // TODO: build a LUT for this
         float lightAtt = GetLightAttenuation(lightDist, lightRange, lightRadius);
         if (lightAtt < EPSILON) continue;
 
-        float3 lightColor = RgbToLinear(block.lightColor.rgb);
+        lightColor = RgbToLinear(lightColor);
         lightColor *= saturate(lightRange / 15.0) * BLOCK_LUX;
-
-        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
-        float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
 
         float3 H = normalize(lightDir + viewDir);
         float NoLm = max(dot(tex_normal, lightDir), 0.0);
@@ -203,19 +202,22 @@ void applyPointLights(ComputeInput input) {
         float LoHm = max(dot(lightDir, H), 0.0);
         float VoHm = max(dot(viewDir, H), 0.0);
 
-        shadow *= NoLm * lightAtt;
-
-        float D = SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
-        diffuse += shadow * D * lightColor;
+        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
+        float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
+        lightColor *= shadow * NoLm * lightAtt;
 
         //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
         float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
         
-        float3 S = SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
-        specular += shadow * S * lightColor;
+        diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
+        specular += lightColor * SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
     }
 
-    if (mat_isMetal(f0_metal)) diffuse *= roughness;
+    diffuse /= PI;
+    
+    // remove diffuse for smooth metals
+    float smoothness = 1.0 - roughness;
+    diffuse *= 1.0 - metalness * smoothness;
 
     diffuse += imgDiffuse[input.globalPos.xy].rgb;
     specular += imgSpecular[input.globalPos.xy].rgb;

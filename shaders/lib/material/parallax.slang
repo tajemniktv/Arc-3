@@ -29,6 +29,9 @@ float2 GetParallaxCoord(const in float2 texcoord, const in int LOD, const in Atl
 
         float2 atlasSize_2;
         normalTex.GetDimensions(2, atlasSize_2.x, atlasSize_2.y);
+
+        // TODO: project two points along ray
+
         maxTexDepth = 1.0 - normalTex.SampleLevel(atlasCoord, 2).a;
         maxTexDepth = sqrt(maxTexDepth);
     }

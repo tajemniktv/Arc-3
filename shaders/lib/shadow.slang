@@ -4,11 +4,14 @@ import lib.common;
 import lib.noise.hash;
 
 extern static const uint Shadow_Resolution;
-extern static const float Shadow_MaxPcfSize = 1.0;
+extern static const float Shadow_MaxPcfSize = 0.6;
 extern static const float SHADOW_PENUMBRA_SCALE = 64.0;
 extern static const int SHADOW_PCSS_SAMPLES = 5;
 extern static const int SHADOW_PCF_SAMPLES = 5;
+
 extern static const int SSS_PCF_SAMPLES = 3;
+extern static const float SSS_BlockRadius = 1.4;
+extern static const float SSS_MaxDist = 6.0;
 
 static const float GoldenAngle = PI * (3.0 - sqrt(5.0));
 static const float PHI = (1.0 + sqrt(5.0)) / 2.0;

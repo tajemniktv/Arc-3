@@ -51,12 +51,23 @@ suffix.SHADOW_RESOLUTION=x
 
 option.SHADOW_DISTANCE=Distance
 
+option.SHADOW_ANGLE=Sun/Moon Angle
+
 
 screen.POST=Post-Processing
 
-option.POST_BLOOM_ENABLED=Bloom
 
-option.POST_TAA_ENABLED=TAA
+screen.POST_BLOOM=Bloom
+
+option.POST_BLOOM_ENABLED=Enabled
+
+option.POST_BLOOM_STRENGTH=Strength
+suffix.POST_BLOOM_STRENGTH=%
+
+
+screen.POST_TAA=TAA
+
+option.POST_TAA_ENABLED=Enabled
 
 
 screen.DEBUG=Debugging

@@ -5,8 +5,6 @@ import lib.material.pbr;
 import lib.sampling.IGN;
 import lib.shadow;
 
-extern static const float SSS_BlockRadius = 1.4;
-extern static const float SSS_MaxDist = 6.0;
 extern static const bool TAA_Enabled;
 
 Sampler2D<float> mainDepthTex;
@@ -59,7 +57,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
 
     // Shadows
     float viewDist = length(viewPos);
-    float geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
+    float geo_NoLm = 1.0 - max(dot(geo_normal, scene[0].SkyLightLocalDir), 0.0);
     float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
     float offset_bias = viewDist * 0.002;
 

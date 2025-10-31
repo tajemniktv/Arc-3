@@ -1,9 +1,11 @@
 import aperture;
+import buffers.settings;
 import lib.common;
 
-extern static const float Effect_Bloom_Strength = 0.04;
 extern static const uint BLOOM_INDEX;
 extern static const uint MIP_INDEX;
+
+ConstantBuffer<SettingsBuffer> settings;
 
 Sampler2D<float3> texSource;
 Sampler2D<float3> texBloom;
@@ -69,7 +71,8 @@ float3 applyBloomUp(float2 pos : SV_Position) : SV_Target0 {
     color += (a+c+g+i) * 0.0625;
 
     if (BLOOM_INDEX == 0u) {
-        color = color * Effect_Bloom_Strength + texSource[int2(pos)];
+        color *= settings.Post_Bloom_Strength;
+        color += texSource[int2(pos)];
     }
 
     color = clamp(color, 0.0, 65000.0);

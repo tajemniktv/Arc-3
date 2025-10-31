@@ -20,6 +20,7 @@ export class Options {
     get Shadow_Angle(): number {return getIntSetting('SHADOW_ANGLE');}
 
     get Post_Bloom_Enabled(): boolean {return getBoolSetting('POST_BLOOM_ENABLED');}
+    get Post_Bloom_Strength(): number {return getFloatSetting('POST_BLOOM_STRENGTH');}
     get Post_TAA_Enabled(): boolean {return getBoolSetting('POST_TAA_ENABLED');}
 
     get Debug_Material(): number {return getIntSetting('DEBUG_MATERIAL');}

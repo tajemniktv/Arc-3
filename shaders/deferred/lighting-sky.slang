@@ -64,13 +64,14 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float lmcoord_y = lightData.g*lightData.g;
     float occlusion = lightData.b;
 
+    float metalness = mat_metalness(f0_metal);
+    
     SurfaceData surface;
     surface.skyPos = getSkyPosition(localPos);
     surface.normal = tex_normal;
     surface.roughL = roughness*roughness;
-    bool is_metal = f0_metal > (229.5/255.0);
-    surface.f0 = is_metal ? albedo : f0_metal;
-    surface.tint = is_metal ? albedo : 1.0;
+    surface.tint = lerp(1.0, albedo, metalness);
+    surface.f0 = lerp(f0_metal, albedo, metalness);
 
     float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
@@ -101,7 +102,9 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.diffuse = output.diffuse / PI + sky_ambient;
     output.specular = output.specular;
 
-    if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
+    // if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
+    float smoothness = 1.0 - roughness;
+    output.diffuse *= 1.0 - metalness * smoothness;
 
     float3 fragViewDir = normalize(viewPos);
     float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);

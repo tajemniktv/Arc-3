@@ -608,6 +608,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     pipeline.createCombinationPass("post/final")
         .overrideObject("texFinal", finalFlipper.getReadTexture().name())
         .compile();
+
+    // HACK: this isn't always called on reload!
+    onSettingsChanged(pipeline);
 }
 
 export function onSettingsChanged(pipeline: PipelineConfig) {
@@ -618,7 +621,8 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 
     new StreamingBufferBuilder(settings)
         .appendFloat(SkyFogSeaLevel)
-        .appendFloat(options.Material_Parallax_Depth * 0.01);
+        .appendFloat(options.Material_Parallax_Depth * 0.01)
+        .appendFloat(options.Post_Bloom_Strength * 0.01);
 }
 
 export function beginFrame(state : WorldState) : void {
