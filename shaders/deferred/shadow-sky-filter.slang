@@ -5,8 +5,8 @@ import lib.sampling.gaussian;
 
 static const uint groupResX = 16;
 static const uint groupResY = 16;
-static const int sharedBufferResX = 20;
-static const int sharedBufferResY = 20;
+static const int sharedBufferResX = groupResX+4;
+static const int sharedBufferResY = groupResY+4;
 static const int sharedBufferSize = sharedBufferResX*sharedBufferResY;
 
 static const float g_sigmaXY = 6.0;
