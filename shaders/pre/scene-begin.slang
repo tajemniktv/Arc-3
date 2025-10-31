@@ -23,12 +23,8 @@ void beginScene() {
         scene[0].taa_jitter = getTaaJitter() / ap.game.screenSize;
     }
     
-    scene[0].SunColor = RgbToLinear(float3(1.0, 0.98, 0.92)) * SUN_LUMINANCE;
     scene[0].SunLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.sunPosition));
-
-    scene[0].MoonColor = RgbToLinear(float3(0.92, 0.94, 1.0)) * MOON_LUMINANCE;
     scene[0].MoonLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.moonPosition));
-
     scene[0].SkyLightLocalDir = normalize(mul(float3x3(ap.camera.viewInv), ap.celestial.position));
 
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++) {
