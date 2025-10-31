@@ -67,8 +67,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
     float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
     shadowViewPos.z += offset_bias;
     
-    const float paddingBlocks = 0.05;
-    int cascade = GetShadowProjection(shadowViewPos, paddingBlocks);
+    int cascade = GetShadowProjection(shadowViewPos, Shadow_MaxPcfSize);
 
     output.shadow = 1.0;
     if (cascade >= 0) {
