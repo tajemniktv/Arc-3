@@ -1,14 +1,18 @@
 import aperture;
 import buffers.scene;
 import lib.common;
+import lib.light.fresnel;
 import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
+import lib.sky.sample_view;
+import lib.sky.sample_light;
 import lib.shadow;
 import lib.material.pbr;
 import lib.material.parallax;
 import lib.tbn;
 
+extern static const float BLOCK_LUX;
 extern static const bool RENDER_TERRAIN = false;
 extern static const bool RENDER_PARTICLES = false;
 extern static const bool TAA_Enabled;
@@ -26,6 +30,7 @@ struct VertexOutput {
     float3 normal;
     float occlusion;
     float4 tangent;
+    float3 viewPos;
     float3 localPos;
 };
 
@@ -34,9 +39,9 @@ VertexOutput vertexMain(Vertex input) {
     VertexOutput output;
 
     float3 modelPos = input.pos().xyz;
-    float3 viewPos = mul3(input.viewMatrix(), modelPos);
-    output.position = mul(input.projectionMatrix(), float4(viewPos, 1.0));
-    output.localPos = mul3(ap.camera.viewInv, viewPos);
+    output.viewPos = mul3(input.viewMatrix(), modelPos);
+    output.position = mul(input.projectionMatrix(), float4(output.viewPos, 1.0));
+    output.localPos = mul3(ap.camera.viewInv, output.viewPos);
 
     output.uv = input.uv();
     output.color = input.color();
@@ -91,6 +96,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
     if (Debug_WhiteWorld) albedo.rgb = 0.85;
 
     float4 normalData = normalTex.SampleLevel(input.uv, LOD);
+    float4 specularData = specularTex.SampleLevel(input.uv, LOD);
 
     bool has_normal = true;
     float3 geo_normal = 0.0;
@@ -108,7 +114,15 @@ FragmentOutput fragmentMain(VertexOutput input) {
         tex_normal = normalize(mul(tex_normal, TBN));
     }
 
+    float roughness = mat_roughness(specularData.r);
+    float f0_metal = mat_f0_metal(specularData.g);
+
     float lmcoord_y = input.light.g*input.light.g;
+
+    float tex_ao = mat_occlusion(normalData.b);
+    float occlusion = tex_ao * input.occlusion;
+
+    float3 viewLocalDir = -normalize(input.localPos);
 
     float geo_NoLm = 1.0;
     if (has_normal) geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
@@ -130,28 +144,65 @@ FragmentOutput fragmentMain(VertexOutput input) {
         shadow = SampleShadow(shadowPos, shadowCascade);
     }
 
-    float3 skyPos = getSkyPosition(input.localPos);
+    SurfaceData surface;
+    surface.skyPos = getSkyPosition(input.localPos);
+    surface.normal = tex_normal;
+    surface.roughL = roughness*roughness;
+    bool is_metal = f0_metal > (229.5/255.0);
+    surface.f0 = is_metal ? albedo.rgb : f0_metal;
+    surface.tint = is_metal ? albedo.rgb : 1.0;
 
-    float NoLm_sun = 1.0;
-    if (has_normal) NoLm_sun = max(dot(tex_normal, scene[0].SunLocalDir), 0.0);
-    float3 sunTransmit = sampleSkyTransmit(skyPos, scene[0].SunLocalDir);
-    float3 lightSun = NoLm_sun * sunTransmit * scene[0].SunColor;
+    CelestialLight sun;
+    sun.localDir = scene[0].SunLocalDir;
+    sun.color = scene[0].SunColor * sampleSkyTransmit(surface.skyPos, sun.localDir);
 
-    float NoLm_moon = 1.0;
-    if (has_normal) NoLm_moon = max(dot(tex_normal, scene[0].MoonLocalDir), 0.0);
-    float3 moonTransmit = sampleSkyTransmit(skyPos, scene[0].MoonLocalDir);
-    float3 lightMoon = NoLm_moon * moonTransmit * scene[0].MoonColor;
+    CelestialLight moon;
+    moon.localDir = scene[0].MoonLocalDir;
+    moon.color = scene[0].MoonColor * sampleSkyTransmit(surface.skyPos, moon.localDir);
 
-    float3 ambient_normal = has_normal ? tex_normal : float3(0.0, 1.0, 0.0);
-    float3 ambient = sampleSkyIrradiance(ambient_normal) * lmcoord_y * input.occlusion;
+    // float3 sss_ambient = sampleSkyIrradiance(-tex_normal) * lmcoord_y;
+    //float3 sssFinal = texSssFinal[uv] * (sun.color + moon.color) + sss_ambient * sss;
+    // diffuse += sssFinal / PI;
 
-    // TODO: SSS
+    bool shadowIsSun = dot(ap.celestial.position, ap.celestial.sunPosition) > 0.0;
+    float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
+    float3 diffuse = 0.0, specular = 0.0;
 
-    float3 diffuse = (lightSun + lightMoon) / PI * shadow + ambient;
-    float3 specular = 0.0;
+    sun.color *= shadowIsSun ? shadow : 1.0;
+    SampleCelestial(diffuse, specular, sun, surface, viewLocalDir, NoVm);
+
+    moon.color *= shadowIsSun ? 1.0 : shadow;
+    SampleCelestial(diffuse, specular, moon, surface, viewLocalDir, NoVm);
+
+    float3 sky_ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+
+    diffuse = diffuse / PI + sky_ambient;
+    specular = specular;
+
+    if (mat_isMetal(f0_metal)) diffuse *= roughness;
+
+    float3 fragViewDir = normalize(input.viewPos);
+    float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);
+    float3 reflectViewDir = reflect(fragViewDir, viewNormal);
+    float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
+    reflectLocalDir = normalize(reflectLocalDir);
+
+    float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
+    float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
+    specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
+    //output.diffuse *= 1.0 - F_NoV;
+
+    specular *= surface.tint;
+    
+
+
+    const float3 ambient = 0.02;
+    float emission = mat_emission(specularData) * BLOCK_LUX;
 
     float4 color = albedo;
-    color.rgb = color.rgb * diffuse + specular;
+    color.rgb = albedo.rgb * (diffuse + emission + ambient) + specular;
+
+    color.rgb *= color.a;
 
     FragmentOutput output;
     output.color = color;
