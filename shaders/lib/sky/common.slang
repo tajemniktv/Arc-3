@@ -18,7 +18,7 @@ static const float atmosphereRadiusMM = 0.100 + groundRadiusMM;
 static const float3 groundAlbedo = 0.3;
 
 static const float SUN_LUMINANCE = 2000.0;//1.6e6;//1.6e9;
-static const float MOON_LUMINANCE = 2.8;
+static const float MOON_LUMINANCE = 2.2;
 
 static const float Sky_MinLight = 0.0;
 

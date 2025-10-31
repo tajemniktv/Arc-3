@@ -3,6 +3,10 @@ import aperture;
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;
 
+static const int DIM_NETHER = -1;
+static const int DIM_OVERWORLD = 0;
+static const int DIM_END = 1;
+
 
 float minOf(float x, float y, float z) {
     return min(x, min(y, z));

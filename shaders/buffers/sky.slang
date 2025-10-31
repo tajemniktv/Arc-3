@@ -23,6 +23,14 @@ static const SkyParameters skyRain = {
     4.4 * 12.0,
 };
 
+static const SkyParameters skyEnd = {
+    float3(0.650, 8.381, 8.576),
+    float3(64.802, 6.558, 28.1),
+    6.0,
+    3.996 * 4.0,
+    4.4 * 10.0,
+};
+
 void lerp(const in SkyParameters a, const in SkyParameters b, float f, out SkyParameters dest) {
     dest.ozoneAbsorptionBase = lerp(a.ozoneAbsorptionBase, b.ozoneAbsorptionBase, f);
     dest.rayleighScatteringBase = lerp(a.rayleighScatteringBase, b.rayleighScatteringBase, f);
