@@ -54,20 +54,25 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const renderConfig = pipeline.getRendererConfig();
 
     let WorldHasSky = false;
+    let DimensionId;
 
     switch (renderConfig.dimension.getPath()) {
         case 'the_nether':
+            DimensionId = -1;
             break;
         case 'the_end':
+            DimensionId = 1;
             WorldHasSky = true;
             break;
         default:
+            DimensionId = 0;
             WorldHasSky = true;
             pipeline.importPNGTexture('texMoon', 'textures/moon.png', true, false);
             break;
     }
 
     pipeline.setGlobalExport(pipeline.createExportList()
+        .addInt('DIMENSION', DimensionId)
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
         .addInt('SHADOW_CASCADE_COUNT', 4)
