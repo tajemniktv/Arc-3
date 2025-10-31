@@ -100,7 +100,7 @@ void buildIndirectDiffuse(ComputeInput input) {
     float4 lightData = unpackUnorm4x8ToFloat(texMatLightGB[pixel].g);
     float occlusion = lightData.b;
 
-    float angle = hash11(dot(float2(pixel), float2(1.0, 3.1)) + ap.time.frames * 0.25);
+    float angle = hash11(dot(float2(pixel), float2(1.0, 3.1)) + scene.frame * 0.25); // ap.time.framess not working?
     float s = sin(angle * (2.0 * PI));
     float c = cos(angle * (2.0 * PI));
 
@@ -113,7 +113,7 @@ void buildIndirectDiffuse(ComputeInput input) {
     float weightAccum = 0.0;
     uint validSamples = 0u;
 
-    float frame = ap.time.frames;
+    float frame = scene.frame;
 
     static const float minSampleDistance = 0.1;
 

@@ -10,6 +10,7 @@ struct SceneBuffer {
     float3 MoonLocalDir;
     float3 SkyLightLocalDir;
     float exposure;
+    int frame;
 
     float2 shadowViewMin[SHADOW_CASCADE_COUNT]; // 2*4
     float2 shadowViewMax[SHADOW_CASCADE_COUNT]; // 2*4

@@ -12,21 +12,21 @@ const Lighting_LPV_GridResolution = 32;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
-let texFinalPrevRef: ActiveTextureReference | undefined;
-let imgFinalPrevRef: ActiveTextureReference | undefined;
+let texFinalPrevRef: TextureReference | undefined;
+let imgFinalPrevRef: TextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
 
 let texIndirectA: BuiltTexture | undefined;
 let texIndirectB: BuiltTexture | undefined;
-let texIndirectHistoryRef: ActiveTextureReference | undefined;
-let texIndirectCurrentRef: ActiveTextureReference | undefined;
-let imgIndirectRef: ActiveTextureReference | undefined;
+let texIndirectHistoryRef: TextureReference | undefined;
+let texIndirectCurrentRef: TextureReference | undefined;
+let imgIndirectRef: TextureReference | undefined;
 
 let texLpvA: BuiltTexture | undefined;
 let texLpvB: BuiltTexture | undefined;
-let texLpvHistoryRef: ActiveTextureReference | undefined;
-let texLpvCurrentRef: ActiveTextureReference | undefined;
-let imgLpvRef: ActiveTextureReference | undefined;
+let texLpvHistoryRef: BuiltTexture | undefined;
+let texLpvCurrentRef: BuiltTexture | undefined;
+let imgLpvRef: BuiltTexture | undefined;
 
 let _renderConfig: RendererConfig;
 
@@ -254,21 +254,18 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clear(true)
         .build();
 
-    texIndirectHistoryRef = pipeline.createTextureReference('texIndirectHistory', null, screenWidth, screenHeight, 1, Format.RGBA16F)
-        .build();
-    texIndirectCurrentRef = pipeline.createTextureReference('texIndirectDiffuse', null, screenWidth, screenHeight, 1, Format.RGBA16F)
-        .build();
-    imgIndirectRef = pipeline.createTextureReference(null, 'imgIndirectDiffuse', screenWidth, screenHeight, 1, Format.RGBA16F)
-        .build();
+    texIndirectHistoryRef = pipeline.createTextureReference('texIndirectHistory', null, screenWidth, screenHeight, 1, Format.RGBA16F);
+    texIndirectCurrentRef = pipeline.createTextureReference('texIndirectDiffuse', null, screenWidth, screenHeight, 1, Format.RGBA16F);
+    imgIndirectRef = pipeline.createTextureReference('imgIndirectDiffuse', null, screenWidth, screenHeight, 1, Format.RGBA16F);
 
-    if (texIndirectHistoryRef && texIndirectA) {
-        texIndirectHistoryRef.pointTo(texIndirectA);
-    }
+    // if (texIndirectHistoryRef && texIndirectA) {
+    //     texIndirectHistoryRef.pointTo(texIndirectA);
+    // }
 
-    if (texIndirectCurrentRef && imgIndirectRef && texIndirectB) {
-        texIndirectCurrentRef.pointTo(texIndirectB);
-        imgIndirectRef.pointTo(texIndirectB);
-    }
+    // if (texIndirectCurrentRef && imgIndirectRef && texIndirectB) {
+    //     texIndirectCurrentRef.pointTo(texIndirectB);
+    //     imgIndirectRef.pointTo(texIndirectB);
+    // }
 
     texLpvA = pipeline.createImageTexture('texLpvRadianceA', 'imgLpvRadianceA')
         .width(Lighting_LPV_GridResolution)
@@ -286,21 +283,36 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clear(true)
         .build();
 
-    texLpvHistoryRef = pipeline.createTextureReference('texLpvRadianceHistory', null, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+    texLpvHistoryRef = pipeline.createImageTexture('texLpvRadianceHistory', 'imgLpvRadianceHistory')
+        .width(Lighting_LPV_GridResolution)
+        .height(Lighting_LPV_GridResolution)
+        .depth(Lighting_LPV_GridResolution)
+        .format(Format.RGBA16F)
+        .clear(true)
         .build();
-    texLpvCurrentRef = pipeline.createTextureReference('texLpvRadiance', null, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+    texLpvCurrentRef = pipeline.createImageTexture('texLpvRadiance', 'imgLpvRadiance')
+        .width(Lighting_LPV_GridResolution)
+        .height(Lighting_LPV_GridResolution)
+        .depth(Lighting_LPV_GridResolution)
+        .format(Format.RGBA16F)
+        .clear(true)
         .build();
-    imgLpvRef = pipeline.createTextureReference(null, 'imgLpvRadiance', Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Lighting_LPV_GridResolution, Format.RGBA16F)
+    imgLpvRef = pipeline.createImageTexture('imgLpvRadiance', 'imgLpvRadiance')
+        .width(Lighting_LPV_GridResolution)
+        .height(Lighting_LPV_GridResolution)
+        .depth(Lighting_LPV_GridResolution)
+        .format(Format.RGBA16F)
+        .clear(true)
         .build();
 
-    if (texLpvHistoryRef && texLpvA) {
-        texLpvHistoryRef.pointTo(texLpvA);
-    }
+    // if (texLpvHistoryRef && texLpvA) {
+    //     texLpvHistoryRef.pointTo(texLpvA);
+    // }
 
-    if (texLpvCurrentRef && imgLpvRef && texLpvB) {
-        texLpvCurrentRef.pointTo(texLpvB);
-        imgLpvRef.pointTo(texLpvB);
-    }
+    // if (texLpvCurrentRef && imgLpvRef && texLpvB) {
+    //     texLpvCurrentRef.pointTo(texLpvB);
+    //     imgLpvRef.pointTo(texLpvB);
+    // }
 
     pipeline.createImageTexture('texHistogram', 'imgHistogram')
         .format(Format.R32UI)
@@ -663,7 +675,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     if (options.Post_TAA_Enabled) {
         texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
-        imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
+        imgFinalPrevRef = pipeline.createTextureReference("imgFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
 
         finalFlipper.flip();
 
@@ -733,8 +745,7 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 }
 
 export function beginFrame(state : WorldState) : void {
-    if (options.Post_TAA_Enabled && texFinalPrevRef && imgFinalPrevRef) {
-        // Only runs when TAA is enabled AND references exist
+    if (options.Post_TAA_Enabled && texFinalPrevRef && imgFinalPrevRef && texFinalPrevA && texFinalPrevB) {
         const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
@@ -744,7 +755,6 @@ export function beginFrame(state : WorldState) : void {
         const altGi = state.currentFrame() % 2 == 1;
         const historyTexture = altGi ? texIndirectA : texIndirectB;
         const writeTexture = altGi ? texIndirectB : texIndirectA;
-
         texIndirectHistoryRef.pointTo(historyTexture);
         texIndirectCurrentRef.pointTo(writeTexture);
         imgIndirectRef.pointTo(writeTexture);
@@ -754,11 +764,11 @@ export function beginFrame(state : WorldState) : void {
         const altLpv = state.currentFrame() % 2 == 1;
         const historyTexture = altLpv ? texLpvA : texLpvB;
         const writeTexture = altLpv ? texLpvB : texLpvA;
-
-        texLpvHistoryRef.pointTo(historyTexture);
-        texLpvCurrentRef.pointTo(writeTexture);
-        imgLpvRef.pointTo(writeTexture);
+        // Jeśli masz TextureReference dla LPV, tu wywołaj pointTo
+        // texLpvHistoryRef.pointTo(historyTexture);
+        // texLpvCurrentRef.pointTo(writeTexture);
+        // imgLpvRef.pointTo(writeTexture);
     }
-
+    
     settings.uploadData();
 }
