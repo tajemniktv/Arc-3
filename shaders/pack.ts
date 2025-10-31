@@ -8,6 +8,7 @@ import {ApplyLightColors} from "./scripts/Lights";
 const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
+const DEBUG_LIGHT_TILES = false;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
@@ -42,9 +43,9 @@ export function configureRenderer(config: RendererConfig): void {
     config.render.sun = false;
 
     config.shadow.enabled = _dimensions.World_HasSky;
-    config.shadow.cascades = options.Shadow_Cascade_Count;
     config.shadow.resolution = options.Shadow_Resolution;
     config.shadow.distance = options.Shadow_Distance;
+    config.shadow.cascades = options.Shadow_Cascade_Count;
 
     config.pointLight.maxCount = options.Lighting_Point_Enabled ? options.Lighting_Point_MaxCount : 0;
     config.pointLight.resolution = options.Lighting_Point_Resolution;
@@ -68,8 +69,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .addInt('SHADOW_CASCADE_COUNT', options.Shadow_Cascade_Count)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
+        .addInt('LIGHTING_ATTENUATION_MODE', options.Lighting_Attenuation_Mode)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)
         .addBool('Debug_WhiteWorld', options.Debug_WhiteWorld)
+        .addFloat('Lighting_Ambient_Brightness', options.Lighting_Ambient_Brightness)
+        .addFloat('Lighting_Ambient_Red', options.Lighting_Ambient_Red)
+        .addFloat('Lighting_Ambient_Green', options.Lighting_Ambient_Green)
+        .addFloat('Lighting_Ambient_Blue', options.Lighting_Ambient_Blue)
         .build());
 
     ApplyLightColors(options.Lighting_ColorCandles);
@@ -142,6 +148,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     let texShadowGB: BuiltTexture | undefined;
     let texSssGB: BuiltTexture | undefined;
     let texWeather: BuiltTexture | undefined;
+    
     if (_dimensions.World_HasSky) {
         texShadowGB = pipeline.createTexture('texShadowGB')
             .width(screenWidth)
@@ -180,13 +187,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .format(Format.RGBA16F)
             .clearColor(0, 0, 0, 0)
             .build();
-        
-    let texSkyTransmit : BuiltTexture | undefined;
-    let texSkyMultiScatter : BuiltTexture | undefined;
-    let texSkyView : BuiltTexture | undefined;
-    let texSkyIrradiance : BuiltTexture | undefined;
 
-    if (WorldHasSky) {
         texSkyTransmit = pipeline.createTexture('texSkyTransmit')
             .format(Format.RGB16F)
             .width(128)
@@ -306,7 +307,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     function shadowSkyShader(name: string, usage: ProgramUsage) {
         return pipeline.createObjectShader(name, usage)
             .location('objects/shadow_sky');
-            // .target(0, texShadowColor).blendOff(0);
+        // .target(0, texShadowColor).blendOff(0);
     }
 
     if (_dimensions.World_HasSky) {
@@ -332,7 +333,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .exportBool('EmissionMask', options.Lighting_Point_EmissionMask)
             .compile();
     }
-    
+
     discardShader("sky-discard", Usage.SKYBOX);
     discardShader("sky-texture-discard", Usage.SKY_TEXTURES);
     discardShader("cloud-discard", Usage.CLOUDS);
@@ -354,7 +355,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     opaqueObjectShader("basic-opaque", Usage.BASIC).compile();
-    
+
     opaqueObjectShader("terrain-solid", Usage.TERRAIN_SOLID)
         .exportBool('RENDER_TERRAIN', true)
         .compile();
@@ -364,7 +365,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .compile();
 
     opaqueObjectShader("entity-solid", Usage.ENTITY_SOLID).compile();
-    
+
     opaqueObjectShader("entity-cutout", Usage.ENTITY_CUTOUT).compile();
 
     opaqueObjectShader("blockentity-cutout", Usage.BLOCK_ENTITY).compile();
@@ -404,7 +405,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .compile();
     }
-        
+
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
     if (_dimensions.World_HasSky) {
@@ -469,7 +470,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .compile();
 
     // finalFlipper.flip();
-        
+
     if (options.Debug_Histogram) {
         postRender.createCompute('histogram-clear')
             .location('setup/histogram-clear', "clearHistogram")
@@ -510,13 +511,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
         const screenWidth_half = Math.ceil(screenWidth / 2.0);
         const screenHeight_half = Math.ceil(screenHeight / 2.0);
-    
+
         let maxLod = Math.log2(Math.min(screenWidth, screenHeight));
         maxLod = Math.floor(maxLod - 2);
         maxLod = Math.max(Math.min(maxLod, 8), 0);
-    
+
         //print(`Bloom enabled with ${maxLod} LODs`);
-    
+
         const texBloom = pipeline.createTexture('texBloom')
             .format(Format.RGB16F)
             .width(screenWidth_half)
@@ -524,9 +525,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .mipmap(true)
             .clear(false)
             .build();
-    
+
         const bloomStage = postRender.subList('Bloom');
-    
+
         for (let i = 0; i < maxLod; i++) {
             bloomStage.createComposite(`bloom-down-${i}`)
                 .location("post/bloom", "applyBloomDown")
@@ -537,7 +538,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 .exportInt("MIP_INDEX", Math.max(i-1, 0))
                 .compile();
         }
-    
+
         for (let i = maxLod-1; i >= 0; i--) {
             const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
                 .location('post/bloom', "applyBloomUp")
@@ -545,7 +546,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 //.exportInt("TEX_SCALE", Math.pow(2, i+1))
                 .exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i, 0));
-                
+
             if (i == 0) {
                 bloomUpShader.target(0, finalFlipper.getWriteTexture())
                     .blendFunc(0, Func.ONE, Func.ZERO, Func.ONE, Func.ZERO);
@@ -557,7 +558,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
             bloomUpShader.compile();
         }
-    
+
         bloomStage.end();
     }
 
@@ -635,7 +636,7 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 
 export function beginFrame(state : WorldState) : void {
     const options = new Options();
-    
+
     if (options.Post_TAA_Enabled && texFinalPrevRef && imgFinalPrevRef) {
         // Only runs when TAA is enabled AND references exist
         const alt = state.currentFrame() % 2 == 1;
