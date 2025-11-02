@@ -55,12 +55,18 @@ FragmentOutput lightingBlockHand(float2 pos : SV_Position) {
     }
 
     float3 lpvPos = FloodFill_GetBufferPosition(localPos);
+    lpvPos -= geo_normal * 0.25;
+    lpvPos += tex_normal * 0.75;
+    
     if (FloodFill_InBounds(lpvPos)) {
         lmcoord_x = 0.0;
     }
 
     output.diffuse = lmcoord_x * BLOCK_LUX;
     output.specular = 0.0;
+
+    // FloodFill
+    output.diffuse += floodfill_sample(lpvPos) * BLOCK_LUX;
 
     // Hand Lights
     float3 handSampleLocalPos = geo_normal*0.02 + localPos;
@@ -85,9 +91,6 @@ FragmentOutput lightingBlockHand(float2 pos : SV_Position) {
     }
 
     output.diffuse /= PI;
-
-    // float3 lpvPos = scene[0].FloodFillCenter + localPos;
-    output.diffuse += floodfill_sample(lpvPos) * BLOCK_LUX;
 
     // remove diffuse for smooth metals
     float smoothness = 1.0 - roughness;

@@ -46,6 +46,5 @@ float3 floodfill_sample(const in float3 bufferPos) {
     if (!FloodFill_InBounds(bufferPos)) return 0.0;
 
     float3 texcoord = bufferPos / FloodFill_BufferSize;
-    // return texcoord;
     return texFloodFill_write.Sample(texcoord);
 }

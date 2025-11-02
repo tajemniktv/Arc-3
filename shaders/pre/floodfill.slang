@@ -10,7 +10,7 @@ static const float LpvFalloff = 0.998;
 static const int3 flattenShared = int3(1, 10, 100);
 static const float LpvBlockRange = 0.2;
 
-groupshared uint sharedBlockMap[10*10*10];
+groupshared int sharedBlockMap[10*10*10];
 groupshared uint sharedBlockMetaMap[10*10*10];
 groupshared float3 floodfillBuffer[10*10*10];
 
@@ -65,8 +65,8 @@ void populateShared(ComputeInput input) {
 	floodfillBuffer[i1] = floodfill_sample_prev(bufferPos1 - voxelFrameOffset);
 	floodfillBuffer[i2] = floodfill_sample_prev(bufferPos2 - voxelFrameOffset);
 
-	int blockId1 = 0u;
-	int blockId2 = 0u;
+	int blockId1 = 0;
+	int blockId2 = 0;
 	uint blockMeta1 = 0u;
 	uint blockMeta2 = 0u;
 
@@ -133,7 +133,7 @@ void floodfill(ComputeInput input) {
 	GroupMemoryBarrierWithGroupSync();
 
 	//int3 cellIndex = int3(input.globalPos);
-	if (any(input.globalPos >= input.globalPos)) return;
+	if (any(input.globalPos >= FloodFill_BufferSize)) return;
 
 	//bool altFrame = ap.timing.frameCounter % 2 == 1;
 
@@ -143,14 +143,14 @@ void floodfill(ComputeInput input) {
 
 	int3 localCellIndex = int3(input.localPos) + 1;
 	int sharedCoord = getSharedCoord(localCellIndex);
-	uint blockId = sharedBlockMap[sharedCoord];
+	int blockId = sharedBlockMap[sharedCoord];
 
 	bool isFullBlock = false;
 	float3 blockTint = 1.0;
 	float3 lightColor = 0.0;
 	uint lightRange = 0;
 
-	if (blockId >= 0u) {
+	if (blockId > 0) {
 		var blockData = ap.blocks[blockId];
 		isFullBlock = blockData.isFullBlock;
 
@@ -197,7 +197,7 @@ void floodfill(ComputeInput input) {
 	hsv.z = log2(hsv.z + 1.0) / LpvBlockRange;
 	accumLight = HsvToRgb(hsv);
 
-	accumLight = input.globalPos / float(FloodFill_BufferSize);
+	// accumLight = input.globalPos / float(FloodFill_BufferSize);
 
 	// if (altFrame) imageStore(imgFloodFill_alt, cellIndex, vec4(accumLight, 1.0));
 	// else imageStore(imgFloodFill, cellIndex, vec4(accumLight, 1.0));
