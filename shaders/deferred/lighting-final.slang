@@ -24,7 +24,7 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
     uint2 uv = uint2(pos);
     float depth = mainDepthTex[uv];
 
-    float3 color = 0.0;
+    float3 final = 0.0;
     if (depth < 1.0) {
         // uint2 normals = texNormalGB[uv];
         // float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
@@ -36,16 +36,16 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
 
         float occlusion = lightData.b;
 
-        const float3 ambient = 0.2 * occlusion;
-        float4 albedo = texAlbedoGB[uv];
+        float4 color = texAlbedoGB[uv];
         float3 diffuse = texDiffuse[uv];
         float3 specular = texSpecular[uv];
         float emission = mat_emission(specularData) * BLOCK_LUX;
 
-        albedo.rgb = RgbToLinear(albedo.rgb);
-        if (Debug_WhiteWorld) albedo.rgb = 0.85;
+        float3 albedo = RgbToLinear(color.rgb);
+        if (Debug_WhiteWorld) albedo = 0.85;
 
-        color = albedo.rgb * (diffuse + emission + ambient) + specular;
+        const float3 ambient = 0.2 * occlusion;
+        final = albedo.rgb * (diffuse + emission + ambient) + specular;
     }
     else if (World_HasSky) {
         float2 texcoord = pos / ap.game.screenSize;
@@ -56,8 +56,8 @@ float4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
         float3 localPos = mul3(ap.camera.viewInv, viewPos);
         float3 viewLocalDir = normalize(localPos);
 
-        color = sampleSkyFinal(localPos, viewLocalDir, false);
+        final = sampleSkyFinal(localPos, viewLocalDir, false);
     }
 
-    return float4(color, 1.0);
+    return float4(final, 1.0);
 }

@@ -102,7 +102,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.diffuse = output.diffuse / PI + sky_ambient;
     output.specular = output.specular;
 
-    // if (mat_isMetal(f0_metal)) output.diffuse *= roughness;
+    // remove diffuse for smooth metals
     float smoothness = 1.0 - roughness;
     output.diffuse *= 1.0 - metalness * smoothness;
 
@@ -115,7 +115,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
     output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
-    //output.diffuse *= 1.0 - F_NoV;
+    output.diffuse *= 1.0 - F_NoV;
 
     output.specular *= surface.tint;
 

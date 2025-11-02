@@ -2,8 +2,9 @@ import aperture;
 import buffers.scene;
 import buffers.sky;
 import lib.common;
-import lib.sky.common;
+import lib.light.floodfill;
 
+extern static const int DIMENSION;
 extern static const bool TAA_Enabled;
 
 RWStructuredBuffer<SceneBuffer> scene;
@@ -32,5 +33,9 @@ void beginScene() {
         scene[0].shadowViewMax[i] = mul3(ap.celestial.projectionInv[i], float3( 1.0,  1.0, 0.0)).xy;
     }
 
-    // lerp(skyClear, skyRain, ap.world.rainStrength, scene[0].sky);
+    if (DIMENSION != DIM_END) {
+        lerp(skyClear, skyRain, ap.world.rainStrength, scene[0].sky);
+    }
+
+    scene[0].FloodFillCenter = GetVoxelCenter(ap.camera.position);
 }

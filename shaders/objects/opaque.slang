@@ -66,9 +66,10 @@ VertexOutput vertexMain(Vertex input) {
 
     float3 viewTangent;
     //output.tangent = 0.0;
-    if (SupportsTexNormals || SupportsParallax) {
+    if (SupportsTexNormals && MATERIAL_FORMAT != MAT_NONE) {
         if (let value = input.tangent()) {
             output.tangent = value;
+            
             viewTangent = mul(input.normalMatrix(), output.tangent.xyz);
             output.tangent.xyz = mul(float3x3(ap.camera.viewInv), viewTangent);
             output.tangent.xyz = normalize(output.tangent.xyz);

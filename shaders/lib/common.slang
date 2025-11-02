@@ -92,11 +92,3 @@ float3 RgbToLinear(const in float3 color) {
 
     return lerp(lower, higher, is_high);
 }
-
-extension CameraData {
-    static const float nearPlane = 0.05;
-    
-    float farPlane() {
-        return ap.world.renderDistance * 4.0;
-    }
-}

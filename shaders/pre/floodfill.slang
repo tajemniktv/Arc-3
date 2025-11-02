@@ -1,7 +1,7 @@
 import aperture;
 import lib.common;
 import lib.light.floodfill;
-import hsv;
+import lib.hsv;
 
 
 extern static const bool PointLight_Enabled;
@@ -58,31 +58,33 @@ void populateShared(ComputeInput input) {
 	uint i2 = i1 + 1u;
 	int3 workGroupOffset = int3(input.groupPos * WorkgroupSize()) - 1;
 
-	int3 pos1 = workGroupOffset + int3(i1 / flattenShared) % 10;
-	int3 pos2 = workGroupOffset + int3(i2 / flattenShared) % 10;
+	int3 bufferPos1 = workGroupOffset + int3(i1 / flattenShared) % 10;
+	int3 bufferPos2 = workGroupOffset + int3(i2 / flattenShared) % 10;
 
 	int3 voxelFrameOffset = GetVoxelFrameOffset();
-	floodfillBuffer[i1] = floodfill_sample_prev(pos1 - voxelFrameOffset);
-	floodfillBuffer[i2] = floodfill_sample_prev(pos2 - voxelFrameOffset);
+	floodfillBuffer[i1] = floodfill_sample_prev(bufferPos1 - voxelFrameOffset);
+	floodfillBuffer[i2] = floodfill_sample_prev(bufferPos2 - voxelFrameOffset);
 
-	uint blockId1 = 0u;
-	uint blockId2 = 0u;
+	int blockId1 = 0u;
+	int blockId2 = 0u;
 	uint blockMeta1 = 0u;
 	uint blockMeta2 = 0u;
 
-	if (voxel_isInBounds(pos1)) {
-		blockId1 = ap.voxel[pos1].blockId;
+	// if (voxel_isInBounds(pos1)) {
+		float3 voxelPos1 = FloodFill_GetLocalPosition(bufferPos1) + ap.camera.position + 0.5;
+		blockId1 = ap.voxel[int3(floor(voxelPos1))].blockId;
 
-		if (blockId1 > 0u)
+		if (blockId1 >= 0)
 			blockMeta1 = ap.blocks[blockId1].metadata;
-	}
+	// }
 
-	if (voxel_isInBounds(pos2)) {
-		blockId2 = ap.voxel[pos2].blockId;
+	// if (voxel_isInBounds(pos2)) {
+		float3 voxelPos2 = FloodFill_GetLocalPosition(bufferPos2) + ap.camera.position + 0.5;
+		blockId2 = ap.voxel[int3(floor(voxelPos2))].blockId;
 
-		if (blockId2 > 0u)
+		if (blockId2 >= 0)
 			blockMeta2 = ap.blocks[blockId2].metadata;
-	}
+	// }
 
 	sharedBlockMap[i1] = blockId1;
 	sharedBlockMap[i2] = blockId2;
@@ -130,17 +132,17 @@ void floodfill(ComputeInput input) {
 	populateShared(input);
 	GroupMemoryBarrierWithGroupSync();
 
-	int3 cellIndex = int3(input.globalPos);
-	if (any(cellIndex >= FloodFill_BufferSize)) return;
+	//int3 cellIndex = int3(input.globalPos);
+	if (any(input.globalPos >= input.globalPos)) return;
 
 	//bool altFrame = ap.timing.frameCounter % 2 == 1;
 
     //vec3 viewDir = ap.camera.viewInv[2].xyz;
     //vec3 voxelCenter = GetVoxelCenter(ap.camera.pos, viewDir);
-    float3 localPos = FloodFill_GetLocalPosition(cellIndex + 0.5);
+    //float3 localPos = FloodFill_GetLocalPosition(input.globalPos + 0.5);
 
-	int3 localCellIndex = int3(input.localPos);
-	int sharedCoord = getSharedCoord(localCellIndex + 1);
+	int3 localCellIndex = int3(input.localPos) + 1;
+	int sharedCoord = getSharedCoord(localCellIndex);
 	uint blockId = sharedBlockMap[sharedCoord];
 
 	bool isFullBlock = false;
@@ -148,7 +150,7 @@ void floodfill(ComputeInput input) {
 	float3 lightColor = 0.0;
 	uint lightRange = 0;
 
-	if (blockId > 0u) {
+	if (blockId >= 0u) {
 		var blockData = ap.blocks[blockId];
 		isFullBlock = blockData.isFullBlock;
 
@@ -182,12 +184,12 @@ void floodfill(ComputeInput input) {
 		if (blockId > 0u)
 			faceMask = sharedBlockMetaMap[sharedCoord];
 
-		accumLight = mixNeighbours(localCellIndex + 1, faceMask) * blockTint;
+		accumLight = mixNeighbours(localCellIndex, faceMask) * blockTint;
 	}
 
 	if (lightRange > 0) {
 		float3 hsv = RgbToHsv(lightColor);
-		hsv.z = exp2((1.0/15.0) * lightRange) - 1.0;
+		hsv.z = exp2(lightRange / 15.0) - 1.0;
 		accumLight += HsvToRgb(hsv);
 	}
 
@@ -195,7 +197,9 @@ void floodfill(ComputeInput input) {
 	hsv.z = log2(hsv.z + 1.0) / LpvBlockRange;
 	accumLight = HsvToRgb(hsv);
 
+	accumLight = input.globalPos / float(FloodFill_BufferSize);
+
 	// if (altFrame) imageStore(imgFloodFill_alt, cellIndex, vec4(accumLight, 1.0));
 	// else imageStore(imgFloodFill, cellIndex, vec4(accumLight, 1.0));
-	imgFloodFill_write[cellIndex] = float4(accumLight, 1.0);
+	imgFloodFill_write[input.globalPos] = float4(accumLight, 1.0);
 }

@@ -83,15 +83,15 @@ void applyPointLights(ComputeInput input) {
     GroupMemoryBarrierWithGroupSync();
 
     float depth = mainDepthTex[input.globalPos.xy];
-    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.nearPlane, ap.camera.farPlane());
-    float depthInt = depthL / ap.camera.farPlane() * uint.maxValue;
+    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.near, ap.camera.far);
+    float depthInt = depthL / ap.camera.far * uint.maxValue;
     depthMinInt.min(uint(floor(depthInt)));
     depthMaxInt.max(uint(ceil(depthInt)));
 
     GroupMemoryBarrierWithGroupSync();
 
-    float depthMin = depthMinInt.load() / float(uint.maxValue) * ap.camera.farPlane();
-    float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap.camera.farPlane();
+    float depthMin = depthMinInt.load() / float(uint.maxValue) * ap.camera.far;
+    float depthMax = depthMaxInt.load() / float(uint.maxValue) * ap.camera.far;
 
     if (input.groupIndex < PointLight_MaxCount) {
         PointLight light = ap.lights[input.groupIndex];

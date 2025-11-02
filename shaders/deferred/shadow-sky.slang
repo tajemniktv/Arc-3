@@ -69,7 +69,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
 
     output.shadow = 1.0;
     if (cascade >= 0) {
-        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos).xyz * 0.5 + 0.5;
+        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
 
         output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
     }
@@ -82,7 +82,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
 
     output.sss = float4(0.0, 0.0, 0.0, 1.0);
     if (cascade >= 0) {
-        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos).xyz * 0.5 + 0.5;
+        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
 
         float3 cascadeScale = GetShadowProjectionScale(cascade);
 

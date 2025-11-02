@@ -16,6 +16,12 @@ let texFinalPrevRef: ActiveTextureReference | undefined;
 let imgFinalPrevRef: ActiveTextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
 
+let texFloodFillA: BuiltTexture | undefined;
+let texFloodFillB: BuiltTexture | undefined;
+let texFloodFill_read: ActiveTextureReference | undefined;
+let imgFloodFill_write: ActiveTextureReference | undefined;
+// let texFloodFill: ActiveTextureReference | undefined;
+
 let _dimensions: Dimensions;
 let _renderConfig: RendererConfig;
 
@@ -66,6 +72,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .addInt('MATERIAL_FORMAT', options.Material_Format)
         .addInt('Shadow_Resolution', options.Shadow_Resolution)
         .addInt('SHADOW_CASCADE_COUNT', 4)
+        .addInt('FloodFill_BufferSize', options.Lighting_FloodFill_Size)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)
@@ -210,6 +217,27 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
+    //if (FloodFillEnabled) {
+        texFloodFillA = pipeline.createImageTexture('texFloodFillA', 'imgFloodFillA')
+            .format(Format.RGBA16F)
+            .width(options.Lighting_FloodFill_Size)
+            .height(options.Lighting_FloodFill_Size)
+            .depth(options.Lighting_FloodFill_Size)
+            .clear(false)
+            .build();
+
+        texFloodFillB = pipeline.createImageTexture('texFloodFillB', 'imgFloodFillB')
+            .format(Format.RGBA16F)
+            .width(options.Lighting_FloodFill_Size)
+            .height(options.Lighting_FloodFill_Size)
+            .depth(options.Lighting_FloodFill_Size)
+            .clear(false)
+            .build();
+
+        texFloodFill_read = pipeline.createTextureReference('texFloodFill_read', 'imgFloodFill_read', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
+        imgFloodFill_write = pipeline.createTextureReference('texFloodFill_write', 'imgFloodFill_write', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
+    //}
+
     const texDiffuse = pipeline.createImageTexture('texDiffuse', 'imgDiffuse')
         .width(screenWidth)
         .height(screenHeight)
@@ -238,6 +266,10 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .clear(true)
             .build();
     }
+
+    //if (_dimensions.Index == 0) {
+        pipeline.importPNGTexture('texMoon', 'textures/moon.png', true, false);
+    //}
 
 
     const setup = pipeline.forStage(Stage.SCREEN_SETUP);
@@ -288,6 +320,14 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .compile();
     }
+
+    preRender.createCompute("floodfill")
+        .location("pre/floodfill", "floodfill")
+        .workGroups(
+            Math.ceil(options.Lighting_FloodFill_Size / 8),
+            Math.ceil(options.Lighting_FloodFill_Size / 8),
+            Math.ceil(options.Lighting_FloodFill_Size / 8))
+        .compile();
 
     preRender.end();
 
@@ -427,16 +467,19 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .location("deferred/lighting-block-hand", "lightingBlockHand")
         .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
         .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
+        //.overrideObject()
         .compile();
 
-    stagePostOpaque.createCompute("deferred-lighting-block-point")
-        .location("deferred/lighting-block-point", "applyPointLights")
-        .workGroups(
-            Math.ceil(screenWidth / 16.0),
-            Math.ceil(screenHeight / 16.0),
-            1)
-        .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
-        .compile();
+    if (options.Lighting_Point_Enabled) {
+        stagePostOpaque.createCompute("deferred-lighting-block-point")
+            .location("deferred/lighting-block-point", "applyPointLights")
+            .workGroups(
+                Math.ceil(screenWidth / 16.0),
+                Math.ceil(screenHeight / 16.0),
+                1)
+            .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
+            .compile();
+    }
 
     stagePostOpaque.createComposite("deferred-lighting-final")
         .location("deferred/lighting-final", "lightingFinal")
@@ -627,12 +670,17 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
 
 export function beginFrame(state : WorldState) : void {
     const options = new Options();
+    const alt = state.currentFrame() % 2 == 1;
     
     if (options.Post_TAA_Enabled) {
-        const alt = state.currentFrame() % 2 == 1;
         texFinalPrevRef.pointTo(alt ? texFinalPrevA : texFinalPrevB);
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
     }
+
+    //if (options.FloodFill_Enabled) {
+        texFloodFill_read.pointTo(alt ? texFloodFillA : texFloodFillB);
+        imgFloodFill_write.pointTo(alt ? texFloodFillB : texFloodFillA);
+    //}
 
     settings.uploadData();
 }

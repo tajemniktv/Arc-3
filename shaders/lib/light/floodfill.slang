@@ -1,6 +1,6 @@
 import aperture;
 
-extern static const int FloodFill_BufferSize = 64;
+extern static const int FloodFill_BufferSize;
 extern static const float FloodFill_FrustumOffsetF = 0.0;//VOXEL_FRUSTUM_OFFSET * 0.01;
 
 static const uint3 FloodFill_BufferCenter = FloodFill_BufferSize / 2;
@@ -12,13 +12,15 @@ static const uint BLOCK_FACE_SOUTH = 3;
 static const uint BLOCK_FACE_EAST = 5;
 static const uint BLOCK_FACE_WEST = 4;
 
+Sampler3D<float3> texFloodFill_write;
 
-bool FloodFill_InBounds(const in int3 voxelPos) {
-    return all(clamp(voxelPos, 0, FloodFill_BufferSize-1) == voxelPos);
+
+bool FloodFill_InBounds(const in int3 bufferPos) {
+    return all(clamp(bufferPos, 0, FloodFill_BufferSize-1) == bufferPos);
 }
 
-bool FloodFill_InBounds(const in float3 voxelPos) {
-    return all(clamp(voxelPos, 0.5, FloodFill_BufferSize-0.5) == voxelPos);
+bool FloodFill_InBounds(const in float3 bufferPos) {
+    return all(clamp(bufferPos, 0.5, FloodFill_BufferSize-0.5) == bufferPos);
 }
 
 // float3 GetVoxelCenter(const in float3 viewPos, const in float3 viewDir) {
@@ -30,7 +32,20 @@ float3 GetVoxelCenter(const in float3 viewPos) {
     return FloodFill_BufferCenter + fract(viewPos);
 }
 
-float3 FloodFill_GetLocalPosition(const in float3 voxelPos) {
-    // return voxelPos - GetVoxelCenter(ap.camera.position, ap.camera.viewInv[2].xyz);
-    return voxelPos - GetVoxelCenter(ap.camera.position);
+float3 FloodFill_GetBufferPosition(const in float3 localPos) {
+    // return position + GetVoxelCenter(ap.camera.position, ap.camera.viewInv[2].xyz);
+    return localPos + GetVoxelCenter(ap.camera.position);
+}
+
+float3 FloodFill_GetLocalPosition(const in float3 bufferPos) {
+    // return bufferPos - GetVoxelCenter(ap.camera.position, ap.camera.viewInv[2].xyz);
+    return bufferPos - GetVoxelCenter(ap.camera.position);
+}
+
+float3 floodfill_sample(const in float3 bufferPos) {
+    if (!FloodFill_InBounds(bufferPos)) return 0.0;
+
+    float3 texcoord = bufferPos / FloodFill_BufferSize;
+    // return texcoord;
+    return texFloodFill_write.Sample(texcoord);
 }

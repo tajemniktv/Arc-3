@@ -88,7 +88,7 @@ void filterShadowSss(ComputeInput input) {
                 i_shared / sharedBufferResX);
 
             int2 uv = uv_base + uv_i;
-            float depthL = ap.camera.farPlane();
+            float depthL = ap.camera.far;
 
             float3 sss = 0.0;
             float3 shadow = 1.0;
@@ -97,7 +97,7 @@ void filterShadowSss(ComputeInput input) {
                 sss = texSssGB[uv];
 
                 float depth = mainDepthTex[uv].r * 2.0 - 1.0;
-                depthL = linearizeDepth(depth, ap.camera.nearPlane, ap.camera.farPlane());
+                depthL = linearizeDepth(depth, ap.camera.near, ap.camera.far);
             }
 
             sharedDepth[i_shared] = depthL;
