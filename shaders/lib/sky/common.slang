@@ -33,7 +33,7 @@ float safeacos(const in float x) {
 
 float3 getSkyPosition(const in float3 localPos) {
     float3 skyPos = localPos;
-    skyPos.y = ap.camera.position.y + localPos.y - settings.SkyFogSeaLevel;
+    skyPos.y = ap.camera.position.y + localPos.y - settings.Sky_SeaLevel;
     //skyPos /= (ATMOSPHERE_MAX - SKY_SEA_LEVEL);
     //skyPos.y *= 10.0;
 

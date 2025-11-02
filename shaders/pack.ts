@@ -1,4 +1,5 @@
 import {Options} from "./scripts/Options";
+import {BlockMap} from "./scripts/BlockMap";
 import {Dimensions} from "./scripts/Dimensions";
 import {BufferFlipper} from "./scripts/BufferFlipper";
 import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
@@ -9,6 +10,8 @@ const Scene_PostExposureMin = -0.8;
 const Scene_PostExposureMax = 10.8;
 const Scene_PostExposureOffset = 0.0;
 const DEBUG_LIGHT_TILES = true;
+
+let BlockMappings: BlockMap;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
@@ -64,7 +67,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     const renderConfig = pipeline.getRendererConfig();
     const options = new Options();
 
-    pipeline.setGlobalExport(pipeline.createExportList()
+    BlockMappings = new BlockMap();
+    BlockMappings.map('water', 'BLOCK_WATER');
+    BlockMappings.map('lava', 'BLOCK_LAVA');
+    // BlockMappings.map('end_portal', 'BLOCK_END_PORTAL');
+    // BlockMappings.map('grass_block', 'BLOCK_GRASS');
+
+    const globalExports = pipeline.createExportList()
         .addInt('DIMENSION', _dimensions.Index)
         .addBool('World_HasSky', _dimensions.World_HasSky)
         .addFloat('BLOCK_LUX', 200)
@@ -76,8 +85,15 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
         .addBool('TAA_Enabled', options.Post_TAA_Enabled)
-        .addBool('Debug_WhiteWorld', options.Debug_WhiteWorld)
-        .build());
+        .addBool('Debug_WhiteWorld', options.Debug_WhiteWorld);
+
+    for (let blockName in BlockMappings.mappings) {
+        const meta = BlockMappings.get(blockName);
+        // defineGlobally(meta.define, meta.index.toString());
+        globalExports.addInt(meta.define, meta.index);
+    }
+        
+    pipeline.setGlobalExport(globalExports.build());
 
     ApplyLightColors(options.Lighting_ColorCandles);
 
@@ -660,18 +676,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     onSettingsChanged(pipeline);
 }
 
-export function onSettingsChanged(pipeline: PipelineConfig) {
-    const options = new Options();
-    const SkyFogSeaLevel = 60.0;
-
-    _renderConfig.sunPathRotation = options.Shadow_Angle;
-
-    new StreamingBufferBuilder(settings)
-        .appendFloat(SkyFogSeaLevel)
-        .appendFloat(options.Material_Parallax_Depth * 0.01)
-        .appendFloat(options.Post_Bloom_Strength * 0.01);
-}
-
 export function beginFrame(state : WorldState) : void {
     const options = new Options();
     const alt = state.currentFrame() % 2 == 1;
@@ -687,4 +691,25 @@ export function beginFrame(state : WorldState) : void {
     }
 
     settings.uploadData();
+}
+
+export function onSettingsChanged(pipeline: PipelineConfig) {
+    const options = new Options();
+
+    _renderConfig.sunPathRotation = options.Shadow_Angle;
+
+    new StreamingBufferBuilder(settings)
+        .appendFloat(options.Sky_SeaLevel)
+        .appendInt(options.Water_WaveDetail)
+        .appendFloat(options.Water_WaveHeight)
+        .appendFloat(options.Material_Parallax_Depth * 0.01)
+        .appendFloat(options.Post_Bloom_Strength * 0.01);
+}
+
+export function getBlockId(block: BlockState) : number {
+    const name = block.getName();
+    const meta = BlockMappings.get(name);
+    if (meta) return meta.index;
+
+    return 0;
 }

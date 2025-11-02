@@ -22,7 +22,7 @@ groupshared uint sharedLightList[256];
 groupshared Atomic<uint> depthMinInt, depthMaxInt;
 groupshared Atomic<uint> counter;
 
-ConstantBuffer<SceneBuffer> scene;
+StructuredBuffer<SceneBuffer> scene;
 
 [[vk::image_format("rgba16f")]]
 RWTexture2D<half3> imgDiffuse;
@@ -150,7 +150,7 @@ void applyPointLights(ComputeInput input) {
         uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
 
         float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
-        if (TAA_Enabled) texcoord -= scene.taa_jitter;
+        if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
 
         float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
         float3 viewPos = project(ap.camera.projectionInv, clipPos);

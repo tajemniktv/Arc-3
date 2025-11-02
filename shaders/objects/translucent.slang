@@ -9,6 +9,7 @@ import lib.sky.sample_transmit;
 import lib.sky.sample_irradiance;
 import lib.sky.sample_view;
 import lib.sky.sample_light;
+import lib.water.waves;
 import lib.shadow;
 import lib.material.pbr;
 import lib.material.parallax;
@@ -20,6 +21,8 @@ extern static const bool RENDER_PARTICLES = false;
 extern static const bool FloodFill_Enabled;
 extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
+
+extern static const uint BLOCK_WATER;
 
 static const bool SupportsParallax = Parallax_Enabled && !RENDER_PARTICLES;
 static const bool SupportsTexNormals = !RENDER_PARTICLES;
@@ -35,20 +38,33 @@ struct VertexOutput {
     float4 tangent;
     float3 viewPos;
     float3 localPos;
+    nointerpolation uint blockId;
 };
 
 [[shader("vertex")]]
 VertexOutput vertexMain(Vertex input) {
     VertexOutput output;
-
-    float3 modelPos = input.pos().xyz;
-    output.viewPos = mul3(input.viewMatrix(), modelPos);
-    output.position = mul(input.projectionMatrix(), float4(output.viewPos, 1.0));
-    output.localPos = mul3(ap.camera.viewInv, output.viewPos);
-
     output.uv = input.uv();
     output.color = input.color();
     output.light = input.light();
+
+    float3 modelPos = input.pos().xyz;
+    output.viewPos = mul3(input.viewMatrix(), modelPos);
+    output.localPos = mul3(ap.camera.viewInv, output.viewPos);
+
+    output.blockId = -1;
+    // uint blockMapId = 0u;
+    if (let value = input.blockId()) {
+        output.blockId = value;
+
+        uint blockMapId = ap.blocks[output.blockId].customId;
+        if (blockMapId == BLOCK_WATER) {
+            float viewDist = length(output.viewPos);
+            int octaves = int(lerp(12.0, 4.0, saturate(viewDist / 64.0)));
+            float3 waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves);
+            output.localPos.y += waveOffset.y;
+        }
+    }
 
     output.occlusion = 1.0;
     if (RENDER_TERRAIN) {
@@ -63,6 +79,7 @@ VertexOutput vertexMain(Vertex input) {
 
     //output.tangent = 0.0;
     if (SupportsTexNormals) {
+        output.tangent = 0.0;
         if (let value = input.tangent()) {
             output.tangent.xyz = mul(input.normalMatrix(), value.xyz);
             output.tangent.xyz = mul(float3x3(ap.camera.viewInv), output.tangent.xyz);
@@ -74,6 +91,9 @@ VertexOutput vertexMain(Vertex input) {
     if (let overlayColor = input.overlayColor()) {
         output.color = lerp(output.color, overlayColor, overlayColor.a);
     }
+
+    output.viewPos = mul3(ap.camera.view, output.localPos);
+    output.position = mul(ap.camera.projection, float4(output.viewPos, 1.0));
 
     if (TAA_Enabled) {
         output.position.xy += scene[0].taa_jitter * (2.0 * output.position.w);
