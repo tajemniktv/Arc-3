@@ -267,6 +267,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
+    pipeline.importPNGTexture('texBlueNoise', 'textures/blue_noise.png', true, false);
+
     //if (_dimensions.Index == 0) {
         pipeline.importPNGTexture('texMoon', 'textures/moon.png', true, false);
     //}

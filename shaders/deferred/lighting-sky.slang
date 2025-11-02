@@ -21,6 +21,20 @@ Sampler2D<uint2> texMatLightGB;
 Sampler2D<float3> texShadowFinal;
 Sampler2D<float3> texSssFinal;
 
+Sampler2D<float3> texBlueNoise;
+
+
+float3 randomize(int2 uv, const in float3 normal, const in float roughness) {
+    uv = uv + int2(23, 137) * ap.timing.frameCounter;
+    float3 random_normal = texBlueNoise[uv % 512];
+    random_normal = normalize(random_normal * 2.0 - 1.0);
+
+    if (dot(normal, random_normal) < 0)
+        random_normal = -random_normal;
+
+    return normalize(lerp(normal, random_normal, roughness));
+}
+
 
 struct FragmentOutput {
     float3 diffuse : SV_Target0;
@@ -106,8 +120,10 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     float smoothness = 1.0 - roughness;
     output.diffuse *= 1.0 - metalness * smoothness;
 
+    float3 reflectLocalNormal = randomize(uv, tex_normal, surface.roughL);
+
     float3 fragViewDir = normalize(viewPos);
-    float3 viewNormal = mul(float3x3(ap.camera.view), tex_normal);
+    float3 viewNormal = mul(float3x3(ap.camera.view), reflectLocalNormal);
     float3 reflectViewDir = reflect(fragViewDir, viewNormal);
     float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
     reflectLocalDir = normalize(reflectLocalDir);

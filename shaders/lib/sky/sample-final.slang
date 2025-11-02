@@ -22,13 +22,13 @@ float3 sampleSkyFinal(const in float3 localPos, const in float3 viewLocalDir, bo
 
         if (!intersectsPlanet) {
             float sunF = sun(viewLocalDir, scene.SunLocalDir);
-            if (sunF > 0.0) skyLight = 10.0 * sunF * scene.SunColor;
+            if (sunF > 0.0) skyLight = 16.0 * sunF * scene.SunColor;
 
             float3 moonLocalPos = moon_distanceKm * scene.MoonLocalDir + localPos;
             float moonHitDist = rayIntersectSphere(moonLocalPos, -viewLocalDir, moon_radiusKm);
 
             if (moonHitDist > 0.0) {
-                skyLight = 10.0 * renderMoon(viewLocalDir, moonLocalPos, moonHitDist, isReflection);
+                skyLight = 8.0 * renderMoon(viewLocalDir, moonLocalPos, moonHitDist, isReflection);
             }
         }
     }
