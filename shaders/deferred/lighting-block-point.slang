@@ -83,10 +83,12 @@ void applyPointLights(ComputeInput input) {
     GroupMemoryBarrierWithGroupSync();
 
     float depth = mainDepthTex[input.globalPos.xy];
-    float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.near, ap.camera.far);
-    float depthInt = depthL / ap.camera.far * uint.maxValue;
-    depthMinInt.min(uint(floor(depthInt)));
-    depthMaxInt.max(uint(ceil(depthInt)));
+    if (depth < 1.0) {
+        float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.near, ap.camera.far);
+        float depthInt = depthL / ap.camera.far * uint.maxValue;
+        depthMinInt.min(uint(floor(depthInt)));
+        depthMaxInt.max(uint(ceil(depthInt)));
+    }
 
     GroupMemoryBarrierWithGroupSync();
 
@@ -135,93 +137,94 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float4 colorData = texAlbedoGB[input.globalPos.xy];
-    uint2 normal_data = texNormalGB[input.globalPos.xy];
-    uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
-
-    float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
-    if (TAA_Enabled) texcoord -= scene.taa_jitter;
-
-    float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-    float3 viewPos = project(ap.camera.projectionInv, clipPos);
-    float3 localPos = mul3(ap.camera.viewInv, viewPos);
-
-    float3 viewDir = -normalize(localPos);
-
-    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normal_data.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normal_data.g).xyz * 2.0 - 1.0);
-    float4 specular_data = unpackUnorm4x8ToFloat(mat_light_data.r);
-
-    float roughness = mat_roughness(specular_data.r);
-    float f0_metal = mat_f0_metal(specular_data.g);
-
-    float3 albedo = RgbToLinear(colorData.rgb);
-    float roughL = roughness * roughness;
-
-    const float offsetBias = 0.06;
-    const float normalBias = 0.12;
-    float3 localSamplePos = normalBias * geo_normal + localPos;
-
-    float NoVm = max(dot(tex_normal, viewDir), 0.0);
-    // float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
-    float metalness = mat_metalness(f0_metal);
-    float3 f0 = lerp(f0_metal, albedo, metalness);
-
+    float3 src_diffuse = imgDiffuse[input.globalPos.xy].rgb;
+    float3 src_specular = imgSpecular[input.globalPos.xy].rgb;
     uint total = counter.load();
-
-    if (DEBUG_LIGHT_TILES) {
-        float hue = lerp(0.65, 0.0, total / 256.0);
-        float3 color = HsvToRgb(float3(hue, 1.0, 1.0));
-        imgDebug[input.globalPos.xy] = float4(color, 1.0);
-    }
 
     float3 diffuse = 0.0;
     float3 specular = 0.0;
 
-    for (uint i = 0; i < total; i++) {
-        uint lightIndex = sharedLightList[i];
-        PointLight light = ap.lights[lightIndex];
-        float3 lightColor = ap.blocks[light.block].lightColor.rgb;
-        uint lightRange = ap.blocks[light.block].emission;
+    if (depth < 1.0 && total > 0) {
+        float4 colorData = texAlbedoGB[input.globalPos.xy];
+        uint2 normal_data = texNormalGB[input.globalPos.xy];
+        uint2 mat_light_data = texMatLightGB[input.globalPos.xy];
 
-        float3 lightOffset = light.position - localSamplePos;
+        float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
+        if (TAA_Enabled) texcoord -= scene.taa_jitter;
 
-        float lightDist = length(lightOffset);
-        float3 lightDir = lightOffset / lightDist;
+        float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
+        float3 viewPos = project(ap.camera.projectionInv, clipPos);
+        float3 localPos = mul3(ap.camera.viewInv, viewPos);
 
-        const float lightRadius = 0.5; // TODO: build a LUT for this
-        float lightAtt = GetLightAttenuation(lightDist, lightRange, lightRadius);
-        if (lightAtt < EPSILON) continue;
+        float3 viewDir = -normalize(localPos);
 
-        lightColor = RgbToLinear(lightColor);
-        lightColor *= saturate(lightRange / 15.0) * BLOCK_LUX;
+        float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normal_data.r).xyz * 2.0 - 1.0);
+        float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normal_data.g).xyz * 2.0 - 1.0);
+        float4 specular_data = unpackUnorm4x8ToFloat(mat_light_data.r);
 
-        float3 H = normalize(lightDir + viewDir);
-        float NoLm = max(dot(tex_normal, lightDir), 0.0);
-        float NoHm = max(dot(tex_normal, H), 0.0);
-        float LoHm = max(dot(lightDir, H), 0.0);
-        float VoHm = max(dot(viewDir, H), 0.0);
+        float roughness = mat_roughness(specular_data.r);
+        float f0_metal = mat_f0_metal(specular_data.g);
 
-        float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
-        float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
-        lightColor *= shadow * NoLm * lightAtt;
+        float3 albedo = RgbToLinear(colorData.rgb);
+        float roughL = roughness * roughness;
 
-        //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
-        float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
+        const float offsetBias = 0.06;
+        const float normalBias = 0.12;
+        float3 localSamplePos = normalBias * geo_normal + localPos;
+
+        float NoVm = max(dot(tex_normal, viewDir), 0.0);
+        // float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
+        float metalness = mat_metalness(f0_metal);
+        float3 f0 = lerp(f0_metal, albedo, metalness);
+
+        for (uint i = 0; i < total; i++) {
+            uint lightIndex = sharedLightList[i];
+            PointLight light = ap.lights[lightIndex];
+            float3 lightColor = ap.blocks[light.block].lightColor.rgb;
+            uint lightRange = ap.blocks[light.block].emission;
+
+            float3 lightOffset = light.position - localSamplePos;
+
+            float lightDist = length(lightOffset);
+            float3 lightDir = lightOffset / lightDist;
+
+            const float lightRadius = 0.5; // TODO: build a LUT for this
+            float lightAtt = GetLightAttenuation(lightDist, lightRange, lightRadius);
+            if (lightAtt < EPSILON) continue;
+
+            lightColor = RgbToLinear(lightColor);
+            lightColor *= saturate(lightRange / 15.0) * BLOCK_LUX;
+
+            float3 H = normalize(lightDir + viewDir);
+            float NoLm = max(dot(tex_normal, lightDir), 0.0);
+            float NoHm = max(dot(tex_normal, H), 0.0);
+            float LoHm = max(dot(lightDir, H), 0.0);
+            float VoHm = max(dot(viewDir, H), 0.0);
+
+            float shadowDepth = unmix(ap.lights.nearPlane, ap.lights.farPlane, lightDist - offsetBias);
+            float shadow = pointLightFiltered.SampleCmp(float4(-lightDir, lightIndex), shadowDepth).r;
+            lightColor *= shadow * NoLm * lightAtt;
+
+            //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
+            float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
+            
+            diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
+            specular += lightColor * SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
+        }
+
+        diffuse /= PI;
         
-        diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
-        specular += lightColor * SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
+        // remove diffuse for smooth metals
+        float smoothness = 1.0 - roughness;
+        diffuse *= 1.0 - metalness * smoothness;
     }
 
-    diffuse /= PI;
-    
-    // remove diffuse for smooth metals
-    float smoothness = 1.0 - roughness;
-    diffuse *= 1.0 - metalness * smoothness;
+    if (DEBUG_LIGHT_TILES) {
+        float hue = lerp(0.65, 0.0, total / 256.0);
+        float3 debug_color = HsvToRgb(float3(hue, 1.0, 1.0));
+        imgDebug[input.globalPos.xy] = float4(debug_color, 1.0);
+    }
 
-    diffuse += imgDiffuse[input.globalPos.xy].rgb;
-    specular += imgSpecular[input.globalPos.xy].rgb;
-
-    imgDiffuse[input.globalPos.xy] = float4(diffuse, 1.0);
-    imgSpecular[input.globalPos.xy] = float4(specular, 1.0);
+    imgDiffuse[input.globalPos.xy] = float4(src_diffuse + diffuse, 1.0);
+    imgSpecular[input.globalPos.xy] = float4(src_specular + specular, 1.0);
 }

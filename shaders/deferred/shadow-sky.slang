@@ -21,81 +21,84 @@ struct FragmentOutput {
 [[shader("fragment")]]
 FragmentOutput skyShadowSss(float2 pos : SV_Position) {
     FragmentOutput output;
-    uint2 uv = uint2(pos);
-
-    float depth = mainDepthTex[uv];
-    float2 texcoord = pos / ap.game.screenSize;
-    if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
-
-    float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-    float3 viewPos = project(ap.camera.projectionInv, clipPos);
-    float3 localPos = mul3(ap.camera.viewInv, viewPos);
-    float3 viewLocalDir = -normalize(localPos);
-
-    float4 colorData = texAlbedoGB[uv];
-    uint2 normalData = texNormalGB[uv];
-    uint2 matLightData = texMatLightGB[uv];
-
-    float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
-    // float3 albedo = RgbToLinear(colorData.rgb);
-    // float roughness = mat_roughness(specularData.r);
-    // float f0_metal = mat_f0_metal(specularData.g);
-    float sss = mat_sss(specularData.b);
-
-    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
-
-    float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
-
-    float dither;
-    if (TAA_Enabled) {
-        dither = InterleavedGradientNoiseTime(uv);
-    }
-    else {
-        dither = InterleavedGradientNoise(uv);
-    }
-
-    // Shadows
-    float viewDist = length(viewPos);
-    float geo_NoLm = 1.0 - max(dot(geo_normal, scene[0].SkyLightLocalDir), 0.0);
-    float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
-    float offset_bias = viewDist * 0.002;
-
-    float3 shadowLocalPos = geo_normal * normal_bias + localPos;
-    float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
-    shadowViewPos.z += offset_bias;
-    
-    int cascade = GetShadowProjection(shadowViewPos, Shadow_MaxPcfSize);
-
     output.shadow = 1.0;
-    if (cascade >= 0) {
-        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
-
-        output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
-    }
-
-    // SSS
-    shadowViewPos = mul3(ap.celestial.view, localPos);
-    
-    float blockRadius = sss * SSS_BlockRadius;
-    cascade = GetShadowProjection(shadowViewPos, blockRadius);
-
     output.sss = float4(0.0, 0.0, 0.0, 1.0);
-    if (cascade >= 0) {
-        float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
 
-        float3 cascadeScale = GetShadowProjectionScale(cascade);
+    uint2 uv = uint2(pos);
+    float depth = mainDepthTex[uv];
+    
+    if (depth < 1.0) {
+        float2 texcoord = pos / ap.game.screenSize;
+        if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
 
-        float bias_scale = sss * SSS_MaxDist * cascadeScale.z;
-        float2 pixelRadius = blockRadius * cascadeScale.xy;
-        float2 coverage_dist = SSS_PCF(shadowPos, cascade, pixelRadius, bias_scale, sss, dither);
+        float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
+        float3 viewPos = project(ap.camera.projectionInv, clipPos);
+        float3 localPos = mul3(ap.camera.viewInv, viewPos);
+        float3 viewLocalDir = -normalize(localPos);
 
-        float absorb_depth = 1.0 * (coverage_dist.y / cascadeScale.z) + 0.1;
-        float3 sss_color = normalize(RgbToLinear(1.0 - colorData.rgb) + 0.02);
-        float3 lit = coverage_dist.x * exp(-(absorb_depth * sss_color + EPSILON));
+        float4 colorData = texAlbedoGB[uv];
+        uint2 normalData = texNormalGB[uv];
+        uint2 matLightData = texMatLightGB[uv];
 
-        float tex_NoLm = max(dot(tex_normal, scene[0].SkyLightLocalDir), 0.0);
-        output.sss.rgb = sss * (1.0 - tex_NoLm) * lit;
+        float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
+        // float3 albedo = RgbToLinear(colorData.rgb);
+        // float roughness = mat_roughness(specularData.r);
+        // float f0_metal = mat_f0_metal(specularData.g);
+        float sss = mat_sss(specularData.b);
+
+        float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
+        float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
+
+        float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
+
+        float dither;
+        if (TAA_Enabled) {
+            dither = InterleavedGradientNoiseTime(uv);
+        }
+        else {
+            dither = InterleavedGradientNoise(uv);
+        }
+
+        // Shadows
+        float viewDist = length(viewPos);
+        float geo_NoLm = 1.0 - max(dot(geo_normal, scene[0].SkyLightLocalDir), 0.0);
+        float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
+        float offset_bias = viewDist * 0.002;
+
+        float3 shadowLocalPos = geo_normal * normal_bias + localPos;
+        float3 shadowViewPos = mul3(ap.celestial.view, shadowLocalPos);
+        shadowViewPos.z += offset_bias;
+        
+        int cascade = GetShadowProjection(shadowViewPos, Shadow_MaxPcfSize);
+
+        if (cascade >= 0) {
+            float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
+
+            output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
+        }
+
+        // SSS
+        shadowViewPos = mul3(ap.celestial.view, localPos);
+        
+        float blockRadius = sss * SSS_BlockRadius;
+        cascade = GetShadowProjection(shadowViewPos, blockRadius);
+
+        if (cascade >= 0) {
+            float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
+
+            float3 cascadeScale = GetShadowProjectionScale(cascade);
+
+            float bias_scale = sss * SSS_MaxDist * cascadeScale.z;
+            float2 pixelRadius = blockRadius * cascadeScale.xy;
+            float2 coverage_dist = SSS_PCF(shadowPos, cascade, pixelRadius, bias_scale, sss, dither);
+
+            float absorb_depth = 1.0 * (coverage_dist.y / cascadeScale.z) + 0.1;
+            float3 sss_color = normalize(RgbToLinear(1.0 - colorData.rgb) + 0.02);
+            float3 lit = coverage_dist.x * exp(-(absorb_depth * sss_color + EPSILON));
+
+            float tex_NoLm = max(dot(tex_normal, scene[0].SkyLightLocalDir), 0.0);
+            output.sss.rgb = sss * (1.0 - tex_NoLm) * lit;
+        }
     }
 
     return output;

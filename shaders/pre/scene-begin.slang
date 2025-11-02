@@ -34,7 +34,9 @@ void beginScene() {
     }
 
     if (DIMENSION != DIM_END) {
-        lerp(skyClear, skyRain, ap.world.rainStrength, scene[0].sky);
+        float blend = smoothstep(0.0, 1.0, ap.world.rainStrength);
+        lerp(skyClear, skyRain, blend, scene[0].sky);
+        //lerp(scene[0].sky, skyThunder, ap.world.thunderStrength, scene[0].sky);
     }
 
     scene[0].FloodFillCenter = GetVoxelCenter(ap.camera.position);

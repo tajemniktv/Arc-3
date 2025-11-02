@@ -48,92 +48,94 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.specular = 0.0;
     
     uint2 uv = uint2(pos);
-
     float depth = mainDepthTex[uv];
-    float2 texcoord = pos / ap.game.screenSize;
-    if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
-
-    float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
-    float3 viewPos = project(ap.camera.projectionInv, clipPos);
-    float3 localPos = mul3(ap.camera.viewInv, viewPos);
-    float3 viewLocalDir = -normalize(localPos);
-
-    float4 colorData = texAlbedoGB[uv];
-    uint2 normalData = texNormalGB[uv];
-    uint2 matLightData = texMatLightGB[uv];
-
-    float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
-    float3 albedo = RgbToLinear(colorData.rgb);
-    float roughness = mat_roughness(specularData.r);
-    float f0_metal = mat_f0_metal(specularData.g);
-    float sss = mat_sss(specularData.b);
-
-    // float roughL = roughness*roughness;
-
-    float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
-    float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
-
-    float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
-    //float2 lmcoord = light.rg;
-    float lmcoord_y = lightData.g*lightData.g;
-    float occlusion = lightData.b;
-
-    float metalness = mat_metalness(f0_metal);
     
-    SurfaceData surface;
-    surface.skyPos = getSkyPosition(localPos);
-    surface.normal = tex_normal;
-    surface.roughL = roughness*roughness;
-    surface.tint = lerp(1.0, albedo, metalness);
-    surface.f0 = lerp(f0_metal, albedo, metalness);
+    if (depth < 1.0) {
+        float2 texcoord = pos / ap.game.screenSize;
+        if (TAA_Enabled) texcoord -= scene[0].taa_jitter;
 
-    float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
+        float3 clipPos = float3(texcoord, depth) * 2.0 - 1.0;
+        float3 viewPos = project(ap.camera.projectionInv, clipPos);
+        float3 localPos = mul3(ap.camera.viewInv, viewPos);
+        float3 viewLocalDir = -normalize(localPos);
 
-    CelestialLight sun;
-    sun.localDir = scene[0].SunLocalDir;
-    sun.color = scene[0].SunColor * sampleSkyTransmit(surface.skyPos, sun.localDir);
+        float4 colorData = texAlbedoGB[uv];
+        uint2 normalData = texNormalGB[uv];
+        uint2 matLightData = texMatLightGB[uv];
 
-    CelestialLight moon;
-    moon.localDir = scene[0].MoonLocalDir;
-    moon.color = scene[0].MoonColor * sampleSkyTransmit(surface.skyPos, moon.localDir);
+        float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
+        float3 albedo = RgbToLinear(colorData.rgb);
+        float roughness = mat_roughness(specularData.r);
+        float f0_metal = mat_f0_metal(specularData.g);
+        float sss = mat_sss(specularData.b);
 
-    float3 sss_ambient = sampleSkyIrradiance(-tex_normal) * lmcoord_y;
-    float3 sssFinal = texSssFinal[uv] * (sun.color + moon.color) + sss_ambient * sss;
-    output.diffuse += sssFinal / PI;
-    
-    
-    float3 shadow = texShadowFinal[uv];
-    bool shadowIsSun = dot(ap.celestial.position, ap.celestial.sunPosition) > 0.0;
+        // float roughL = roughness*roughness;
 
-    sun.color *= shadowIsSun ? shadow : 1.0;
-    SampleCelestial(output.diffuse, output.specular, sun, surface, viewLocalDir, NoVm);
+        float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
+        float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
 
-    moon.color *= shadowIsSun ? 1.0 : shadow;
-    SampleCelestial(output.diffuse, output.specular, moon, surface, viewLocalDir, NoVm);
+        float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
+        //float2 lmcoord = light.rg;
+        float lmcoord_y = lightData.g*lightData.g;
+        float occlusion = lightData.b;
 
-    float3 sky_ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+        float metalness = mat_metalness(f0_metal);
+        
+        SurfaceData surface;
+        surface.skyPos = getSkyPosition(localPos);
+        surface.normal = tex_normal;
+        surface.roughL = roughness*roughness;
+        surface.tint = lerp(1.0, albedo, metalness);
+        surface.f0 = lerp(f0_metal, albedo, metalness);
 
-    output.diffuse = output.diffuse / PI + sky_ambient;
-    output.specular = output.specular;
+        float NoVm = max(dot(tex_normal, viewLocalDir), 0.0);
 
-    // remove diffuse for smooth metals
-    float smoothness = 1.0 - roughness;
-    output.diffuse *= 1.0 - metalness * smoothness;
+        CelestialLight sun;
+        sun.localDir = scene[0].SunLocalDir;
+        sun.color = scene[0].SunColor * sampleSkyTransmit(surface.skyPos, sun.localDir);
 
-    float3 reflectLocalNormal = randomize(uv, tex_normal, surface.roughL);
+        CelestialLight moon;
+        moon.localDir = scene[0].MoonLocalDir;
+        moon.color = scene[0].MoonColor * sampleSkyTransmit(surface.skyPos, moon.localDir);
 
-    float3 fragViewDir = normalize(viewPos);
-    float3 viewNormal = mul(float3x3(ap.camera.view), reflectLocalNormal);
-    float3 reflectViewDir = reflect(fragViewDir, viewNormal);
-    float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
-    reflectLocalDir = normalize(reflectLocalDir);
+        float3 sss_ambient = sampleSkyIrradiance(-tex_normal) * lmcoord_y;
+        float3 sssFinal = texSssFinal[uv] * (sun.color + moon.color) + sss_ambient * sss;
+        output.diffuse += sssFinal / PI;
+        
+        
+        float3 shadow = texShadowFinal[uv];
+        bool shadowIsSun = dot(ap.celestial.position, ap.celestial.sunPosition) > 0.0;
 
-    float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
-    float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
-    output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
-    output.diffuse *= 1.0 - F_NoV;
+        sun.color *= shadowIsSun ? shadow : 1.0;
+        SampleCelestial(output.diffuse, output.specular, sun, surface, viewLocalDir, NoVm);
 
-    output.specular *= surface.tint;
+        moon.color *= shadowIsSun ? 1.0 : shadow;
+        SampleCelestial(output.diffuse, output.specular, moon, surface, viewLocalDir, NoVm);
+
+        float3 sky_ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+
+        output.diffuse = output.diffuse / PI + sky_ambient;
+        output.specular = output.specular;
+
+        // remove diffuse for smooth metals
+        float smoothness = 1.0 - roughness;
+        output.diffuse *= 1.0 - metalness * smoothness;
+
+        float3 reflectLocalNormal = randomize(uv, tex_normal, surface.roughL);
+
+        float3 fragViewDir = normalize(viewPos);
+        float3 viewNormal = mul(float3x3(ap.camera.view), reflectLocalNormal);
+        float3 reflectViewDir = reflect(fragViewDir, viewNormal);
+        float3 reflectLocalDir = mul(float3x3(ap.camera.viewInv), reflectViewDir);
+        reflectLocalDir = normalize(reflectLocalDir);
+
+        float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
+        float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
+        output.specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
+        output.diffuse *= 1.0 - F_NoV;
+
+        output.specular *= surface.tint;
+    }
 
     return output;
 }

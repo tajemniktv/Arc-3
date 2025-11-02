@@ -44,6 +44,14 @@ option.LIGHTING_POINT_EMISSION_MASK=Emission Mask
 option.LIGHTING_POINT_EMISSION_MASK.comment=Only allows light to pass through emissive parts of blocks. Requires a PBR resource pack!
 
 
+screen.LIGHTING_FLOODFILL=FloodFill
+
+option.LIGHTING_FLOODFILL_ENABLED=Enabled
+
+option.LIGHTING_FLOODFILL_SIZE=Volume Size
+suffix.LIGHTING_FLOODFILL_SIZE=m³
+
+
 screen.SHADOWS=Shadows
 
 option.SHADOW_RESOLUTION=Resolution

@@ -10,9 +10,10 @@ static const float LpvFalloff = 0.998;
 static const int3 flattenShared = int3(1, 10, 100);
 static const float LpvBlockRange = 0.2;
 
-groupshared int sharedBlockMap[10*10*10];
-groupshared uint sharedBlockMetaMap[10*10*10];
-groupshared float3 floodfillBuffer[10*10*10];
+static const int sharedBufferSize = 10*10*10;
+groupshared int sharedBlockMap[sharedBufferSize];
+groupshared uint sharedBlockMetaMap[sharedBufferSize];
+groupshared float3 floodfillBuffer[sharedBufferSize];
 
 [[vk::image_format("rgba16f")]]
 RWTexture3D<float4> imgFloodFill_write;
@@ -37,11 +38,6 @@ int3 GetVoxelFrameOffset() {
 float3 floodfill_sample_prev(in int3 texCoord) {
 	if (!FloodFill_InBounds(texCoord)) return 0.0;
 
-	// bool altFrame = ap.timing.frameCounter % 2 == 1;
-
-	// float3 lpvSample = altFrame
-	// 	? imageLoad(imgFloodFill, texCoord).rgb
-	// 	: imageLoad(imgFloodFill_alt, texCoord).rgb;
 	float3 lpvSample = texFloodFill_read[texCoord].rgb;
 
 	float3 hsv = RgbToHsv(lpvSample);
@@ -52,45 +48,29 @@ float3 floodfill_sample_prev(in int3 texCoord) {
 }
 
 void populateShared(ComputeInput input) {
-	uint i1 = uint(input.groupIndex) * 2u;
-	if (i1 >= 1000u) return;
+	uint i_base = uint(input.groupIndex) * 2u;
+	if (i_base >= 1000u) return;
 
-	uint i2 = i1 + 1u;
 	int3 workGroupOffset = int3(input.groupPos * WorkgroupSize()) - 1;
-
-	int3 bufferPos1 = workGroupOffset + int3(i1 / flattenShared) % 10;
-	int3 bufferPos2 = workGroupOffset + int3(i2 / flattenShared) % 10;
-
 	int3 voxelFrameOffset = GetVoxelFrameOffset();
-	floodfillBuffer[i1] = floodfill_sample_prev(bufferPos1 - voxelFrameOffset);
-	floodfillBuffer[i2] = floodfill_sample_prev(bufferPos2 - voxelFrameOffset);
 
-	int blockId1 = 0;
-	int blockId2 = 0;
-	uint blockMeta1 = 0u;
-	uint blockMeta2 = 0u;
+	[ForceUnroll]
+	for (int i = 0; i < 2; i++) {
+		int x = i_base + i;
+	
+		int3 bufferPos = workGroupOffset + int3(x / flattenShared) % 10;
+		floodfillBuffer[x] = floodfill_sample_prev(bufferPos - voxelFrameOffset);
 
-	// if (voxel_isInBounds(pos1)) {
-		float3 voxelPos1 = FloodFill_GetLocalPosition(bufferPos1) + ap.camera.position + 0.5;
-		blockId1 = ap.voxel[int3(floor(voxelPos1))].blockId;
+		uint blockMeta = 0u;
+		float3 voxelPos = FloodFill_GetLocalPosition(bufferPos) + ap.camera.position + 0.5;
+		int blockId = ap.voxel[int3(floor(voxelPos))].blockId;
 
-		if (blockId1 >= 0)
-			blockMeta1 = ap.blocks[blockId1].metadata;
-	// }
+		if (blockId >= 0)
+			blockMeta = ap.blocks[blockId].metadata;
 
-	// if (voxel_isInBounds(pos2)) {
-		float3 voxelPos2 = FloodFill_GetLocalPosition(bufferPos2) + ap.camera.position + 0.5;
-		blockId2 = ap.voxel[int3(floor(voxelPos2))].blockId;
-
-		if (blockId2 >= 0)
-			blockMeta2 = ap.blocks[blockId2].metadata;
-	// }
-
-	sharedBlockMap[i1] = blockId1;
-	sharedBlockMap[i2] = blockId2;
-
-	sharedBlockMetaMap[i1] = blockMeta1;
-	sharedBlockMetaMap[i2] = blockMeta2;
+		sharedBlockMap[x] = blockId;
+		sharedBlockMetaMap[x] = blockMeta;
+	}
 }
 
 float3 sampleFloodfillShared(int3 pos, uint mask_index) {

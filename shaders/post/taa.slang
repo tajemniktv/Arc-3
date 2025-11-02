@@ -71,6 +71,7 @@ void applyTaa(ComputeInput input) {
     if (i_base < sharedBufferSize) {
         uint2 uv_base = input.groupPos.xy * int2(groupResX, groupResY) - 1u;
 
+        [ForceUnroll]
         for (uint i = 0u; i < 2u; i++) {
             uint i_shared = i_base + i;
 

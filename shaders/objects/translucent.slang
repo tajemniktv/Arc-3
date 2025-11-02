@@ -87,7 +87,7 @@ struct FragmentOutput {
 };
 
 [[shader("fragment")]]
-FragmentOutput fragmentMain(VertexOutput input) {
+FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     float LOD = albedoTex.CalculateLevelOfDetail(input.uv);
 
     float4 albedo = albedoTex.SampleLevel(input.uv, LOD) * input.color;

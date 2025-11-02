@@ -20,7 +20,6 @@ let texFloodFillA: BuiltTexture | undefined;
 let texFloodFillB: BuiltTexture | undefined;
 let texFloodFill_read: ActiveTextureReference | undefined;
 let imgFloodFill_write: ActiveTextureReference | undefined;
-// let texFloodFill: ActiveTextureReference | undefined;
 
 let _dimensions: Dimensions;
 let _renderConfig: RendererConfig;
@@ -72,6 +71,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .addInt('MATERIAL_FORMAT', options.Material_Format)
         .addInt('Shadow_Resolution', options.Shadow_Resolution)
         .addInt('SHADOW_CASCADE_COUNT', 4)
+        .addBool('FloodFill_Enabled', options.Lighting_FloodFill_Enabled)
         .addInt('FloodFill_BufferSize', options.Lighting_FloodFill_Size)
         .addBool('PointLight_Enabled', options.Lighting_Point_Enabled)
         .addInt('PointLight_MaxCount', renderConfig.pointLight.maxCount)
@@ -217,7 +217,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
-    //if (FloodFillEnabled) {
+    if (options.Lighting_FloodFill_Enabled) {
         texFloodFillA = pipeline.createImageTexture('texFloodFillA', 'imgFloodFillA')
             .format(Format.RGBA16F)
             .width(options.Lighting_FloodFill_Size)
@@ -236,7 +236,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
         texFloodFill_read = pipeline.createTextureReference('texFloodFill_read', 'imgFloodFill_read', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
         imgFloodFill_write = pipeline.createTextureReference('texFloodFill_write', 'imgFloodFill_write', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
-    //}
+    }
 
     const texDiffuse = pipeline.createImageTexture('texDiffuse', 'imgDiffuse')
         .width(screenWidth)
@@ -323,13 +323,15 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    preRender.createCompute("floodfill")
-        .location("pre/floodfill", "floodfill")
-        .workGroups(
-            Math.ceil(options.Lighting_FloodFill_Size / 8),
-            Math.ceil(options.Lighting_FloodFill_Size / 8),
-            Math.ceil(options.Lighting_FloodFill_Size / 8))
-        .compile();
+    if (options.Lighting_FloodFill_Enabled) {
+        preRender.createCompute("floodfill")
+            .location("pre/floodfill", "floodfill")
+            .workGroups(
+                Math.ceil(options.Lighting_FloodFill_Size / 8),
+                Math.ceil(options.Lighting_FloodFill_Size / 8),
+                Math.ceil(options.Lighting_FloodFill_Size / 8))
+            .compile();
+    }
 
     preRender.end();
 
@@ -679,10 +681,10 @@ export function beginFrame(state : WorldState) : void {
         imgFinalPrevRef.pointTo(alt ? texFinalPrevB : texFinalPrevA);
     }
 
-    //if (options.FloodFill_Enabled) {
+    if (options.Lighting_FloodFill_Enabled) {
         texFloodFill_read.pointTo(alt ? texFloodFillA : texFloodFillB);
         imgFloodFill_write.pointTo(alt ? texFloodFillB : texFloodFillA);
-    //}
+    }
 
     settings.uploadData();
 }

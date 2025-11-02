@@ -42,6 +42,7 @@ void sharpen(ComputeInput input) {
         // preload shared memory
         uint2 uv_base = input.groupPos.xy * uint2(groupResX, groupResY) - 1u;
 
+        [ForceUnroll]
         for (uint i = 0u; i < 2u; i++) {
             uint i_shared = i_base + i;
 

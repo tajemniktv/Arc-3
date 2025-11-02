@@ -31,6 +31,7 @@ float3 GetShadowProjectionScale(const in int cascade) {
 
 int GetShadowProjection(const in float3 shadowViewPos, const in float padding) {
     int cascadeIndex = -1;
+    [ForceUnroll]
     for (int i = 0; i < SHADOW_CASCADE_COUNT; i++) {
         if (all(clamp(shadowViewPos.xy, scene[0].shadowViewMin[i] + padding, scene[0].shadowViewMax[i] - padding) == shadowViewPos.xy)) {
             cascadeIndex = i;
