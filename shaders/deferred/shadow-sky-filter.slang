@@ -12,44 +12,44 @@ static const int sharedBufferSize = sharedBufferResX*sharedBufferResY;
 static const float g_sigmaXY = 6.0;
 static const float g_sigmaV = 0.008;
 
-groupshared float sharedGaussian[5];
-groupshared float3 sharedShadow[sharedBufferSize];
-groupshared float3 sharedSss[sharedBufferSize];
+groupshared half sharedGaussian[5];
+groupshared half3 sharedShadow[sharedBufferSize];
+groupshared half3 sharedSss[sharedBufferSize];
 groupshared float sharedDepth[sharedBufferSize];
 
 [[vk::image_format("rgba8")]]
-RWTexture2D<float4> imgShadowFinal;
+RWTexture2D<half3> imgShadowFinal;
 
 [[vk::image_format("rgba8")]]
-RWTexture2D<float4> imgSssFinal;
+RWTexture2D<half3> imgSssFinal;
 
 Sampler2D<float> mainDepthTex;
-Sampler2D<float3> texShadowGB;
-Sampler2D<float3> texSssGB;
+Sampler2D<half3> texShadowGB;
+Sampler2D<half3> texSssGB;
 
 
-void sampleSharedBuffer(const in uint2 uv_base, const in float depthL, out float3 shadow, out float3 sss) {
+void sampleSharedBuffer(const in uint2 uv_base, const in float depthL, out half3 shadow, out half3 sss) {
     float total = 0.0;
-    float3 accum_shadow = 0.0;
-    float3 accum_sss = 0.0;
+    half3 accum_shadow = half3(0.0);
+    half3 accum_sss = half3(0.0);
     
     for (int iy = 0; iy < 5; iy++) {
-        float fy = sharedGaussian[iy];
+        half fy = sharedGaussian[iy];
 
         for (int ix = 0; ix < 5; ix++) {
-            float fx = sharedGaussian[ix];
+            half fx = sharedGaussian[ix];
             
             int2 uv_shared = uv_base + (int2(ix, iy) - 2);
             int i_shared = uv_shared.y * sharedBufferResX + uv_shared.x;
 
-            float3 sample_shadow = sharedShadow[i_shared];
-            float3 sample_sss = sharedSss[i_shared];
+            half3 sample_shadow = sharedShadow[i_shared];
+            half3 sample_sss = sharedSss[i_shared];
             float sampleDepthL = sharedDepth[i_shared];
             
             float depthDiff = abs(sampleDepthL - depthL);
-            float fv = Gaussian(g_sigmaV, depthDiff);
+            half fv = half(Gaussian(g_sigmaV, depthDiff));
             
-            float weight = fx*fy*fv;
+            half weight = fx*fy*fv;
             accum_shadow += weight * sample_shadow;
             accum_sss += weight * sample_sss;
             total += weight;
@@ -57,8 +57,8 @@ void sampleSharedBuffer(const in uint2 uv_base, const in float depthL, out float
     }
     
     //if (total <= EPSILON) return float4(float3(1.0), 0.0);
-    shadow = accum_shadow / total;
-    sss = accum_sss / total;
+    shadow = accum_shadow / half(total);
+    sss = accum_sss / half(total);
 }
 
 
@@ -73,7 +73,7 @@ struct ComputeInput {
 [numthreads(groupResX, groupResY, 1)]
 void filterShadowSss(ComputeInput input) {
     if (input.groupIndex < 5)
-        sharedGaussian[input.groupIndex] = Gaussian(g_sigmaXY, abs(input.groupIndex - 2));
+        sharedGaussian[input.groupIndex] = half(Gaussian(g_sigmaXY, abs(input.groupIndex - 2)));
     
     uint i_base = uint(input.groupIndex) * 2u;
     if (i_base < sharedBufferSize) {
@@ -90,8 +90,8 @@ void filterShadowSss(ComputeInput input) {
             int2 uv = uv_base + uv_i;
             float depthL = ap.camera.far;
 
-            float3 sss = 0.0;
-            float3 shadow = 1.0;
+            half3 sss = half3(0.0);
+            half3 shadow = half3(1.0);
             if (all(uv >= 0 && uv < ap.game.screenSize)) {
                 shadow = texShadowGB[uv].rgb;
                 sss = texSssGB[uv];
@@ -114,10 +114,10 @@ void filterShadowSss(ComputeInput input) {
         int i_shared = uv_shared.y * sharedBufferResX + uv_shared.x;
     	float depthL = sharedDepth[i_shared];
 
-    	float3 shadow, sss;
+    	half3 shadow, sss;
         sampleSharedBuffer(uv_shared, depthL, shadow, sss);
 
-    	imgShadowFinal[uv] = float4(shadow, 1.0);
-    	imgSssFinal[uv] = float4(sss, 1.0);
+    	imgShadowFinal[uv] = shadow;
+    	imgSssFinal[uv] = sss;
     }
 }

@@ -25,10 +25,10 @@ groupshared Atomic<uint> counter;
 ConstantBuffer<SceneBuffer> scene;
 
 [[vk::image_format("rgba16f")]]
-RWTexture2D<float4> imgDiffuse;
+RWTexture2D<half3> imgDiffuse;
 
 [[vk::image_format("rgba16f")]]
-RWTexture2D<float4> imgSpecular;
+RWTexture2D<half3> imgSpecular;
 
 [[vk::image_format("rgba8")]]
 RWTexture2D<float4> imgDebug;
@@ -99,7 +99,7 @@ void applyPointLights(ComputeInput input) {
         PointLight light = ap.lights[input.groupIndex];
 
         if (light.block >= 0) {
-            float lightRange = ap.blocks[light.block].emission + 0.5;
+            half lightRange = ap.blocks[light.block].emission + 0.5;
 
             // compute view-space position and collision test
             float3 lightViewPos = mul3(ap.camera.view, light.position);
@@ -137,12 +137,12 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float3 src_diffuse = imgDiffuse[input.globalPos.xy].rgb;
-    float3 src_specular = imgSpecular[input.globalPos.xy].rgb;
+    half3 src_diffuse = imgDiffuse[input.globalPos.xy].rgb;
+    half3 src_specular = imgSpecular[input.globalPos.xy].rgb;
     uint total = counter.load();
 
-    float3 diffuse = 0.0;
-    float3 specular = 0.0;
+    half3 diffuse = half3(0.0);
+    half3 specular = half3(0.0);
 
     if (depth < 1.0 && total > 0) {
         float4 colorData = texAlbedoGB[input.globalPos.xy];
@@ -162,11 +162,11 @@ void applyPointLights(ComputeInput input) {
         float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normal_data.g).xyz * 2.0 - 1.0);
         float4 specular_data = unpackUnorm4x8ToFloat(mat_light_data.r);
 
-        float roughness = mat_roughness(specular_data.r);
-        float f0_metal = mat_f0_metal(specular_data.g);
+        half roughness = mat_roughness(specular_data.r);
+        half f0_metal = mat_f0_metal(specular_data.g);
 
-        float3 albedo = RgbToLinear(colorData.rgb);
-        float roughL = roughness * roughness;
+        half3 albedo = RgbToLinear(colorData.rgb);
+        half roughL = roughness * roughness;
 
         const float offsetBias = 0.06;
         const float normalBias = 0.12;
@@ -174,13 +174,13 @@ void applyPointLights(ComputeInput input) {
 
         float NoVm = max(dot(tex_normal, viewDir), 0.0);
         // float3 f0 = f0_metal < 0.9 ? f0_metal : albedo;
-        float metalness = mat_metalness(f0_metal);
-        float3 f0 = lerp(f0_metal, albedo, metalness);
+        half metalness = mat_metalness(f0_metal);
+        half3 f0 = lerp(f0_metal, albedo, metalness);
 
         for (uint i = 0; i < total; i++) {
             uint lightIndex = sharedLightList[i];
             PointLight light = ap.lights[lightIndex];
-            float3 lightColor = ap.blocks[light.block].lightColor.rgb;
+            half3 lightColor = ap.blocks[light.block].lightColor.rgb;
             uint lightRange = ap.blocks[light.block].emission;
 
             float3 lightOffset = light.position - localSamplePos;
@@ -206,19 +206,19 @@ void applyPointLights(ComputeInput input) {
             lightColor *= shadow * NoLm * lightAtt;
 
             //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
-            float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
+            half3 F_VoH = F_schlickRough(VoHm, f0, roughL);
             
             diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL) * saturate(1.0 - F_VoH);
             specular += lightColor * SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
         }
 
-        diffuse /= PI;
+        diffuse /= half3(PI);
         
         // remove diffuse for smooth metals
         float smoothness = 1.0 - roughness;
         diffuse *= 1.0 - metalness * smoothness;
 
-        float3 specular_tint = lerp(1.0, albedo, metalness);
+        half3 specular_tint = lerp(1.0, albedo, metalness);
         specular *= specular_tint;
     }
 
@@ -228,6 +228,6 @@ void applyPointLights(ComputeInput input) {
         imgDebug[input.globalPos.xy] = float4(debug_color, 1.0);
     }
 
-    imgDiffuse[input.globalPos.xy] = float4(src_diffuse + diffuse, 1.0);
-    imgSpecular[input.globalPos.xy] = float4(src_specular + specular, 1.0);
+    imgDiffuse[input.globalPos.xy] = src_diffuse + diffuse;
+    imgSpecular[input.globalPos.xy] = src_specular + specular;
 }

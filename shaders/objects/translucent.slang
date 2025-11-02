@@ -2,6 +2,7 @@ import aperture;
 import buffers.scene;
 import lib.common;
 import lib.light.fresnel;
+import lib.light.floodfill;
 import lib.light.hand;
 import lib.sky.common;
 import lib.sky.sample_transmit;
@@ -16,6 +17,7 @@ import lib.tbn;
 // extern static const float BLOCK_LUX;
 extern static const bool RENDER_TERRAIN = false;
 extern static const bool RENDER_PARTICLES = false;
+extern static const bool FloodFill_Enabled;
 extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 
@@ -118,7 +120,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     float roughness = mat_roughness(specularData.r);
     float f0_metal = mat_f0_metal(specularData.g);
 
-    float lmcoord_y = input.light.g*input.light.g;
+    float2 lmcoord = input.light.rg*input.light.rg;
 
     float tex_ao = mat_occlusion(normalData.b);
     float occlusion = tex_ao * input.occlusion;
@@ -176,6 +178,21 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     moon.color *= shadowIsSun ? 1.0 : shadow;
     SampleCelestial(diffuse, specular, moon, surface, viewLocalDir, NoVm);
 
+    // FloodFill
+    if (FloodFill_Enabled) {
+        float3 lpvPos = FloodFill_GetBufferPosition(input.localPos);
+        lpvPos -= geo_normal * 0.25;
+        lpvPos += tex_normal * 0.75;
+        
+        if (FloodFill_InBounds(lpvPos)) {
+            diffuse += floodfill_sample(lpvPos) * BLOCK_LUX;
+            lmcoord.x = 0.0;
+        }
+    }
+
+    diffuse += lmcoord.x * BLOCK_LUX;
+
+    // Hand Held
     float3 handSampleLocalPos = geo_normal*0.02 + input.localPos;
 
     if (ap.game.mainHand != 0u) {
@@ -188,7 +205,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
         GetHandLight(diffuse, specular, ap.game.offHand, lightLocalPos, handSampleLocalPos, viewLocalDir, tex_normal, geo_normal, surface.f0, surface.roughL);
     }
 
-    float3 sky_ambient = sampleSkyIrradiance(tex_normal) * lmcoord_y * occlusion;
+    float3 sky_ambient = sampleSkyIrradiance(tex_normal) * lmcoord.y * occlusion;
 
     diffuse = diffuse / PI + sky_ambient;
 
@@ -202,7 +219,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
 
     float3 skyColor = sampleSkyView(surface.skyPos, reflectLocalDir, scene[0].SunLocalDir);
     float3 F_NoV = F_schlickRough(NoVm, surface.f0, surface.roughL);
-    specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord_y);
+    specular += F_NoV * skyColor * ((1.0 - roughness) * lmcoord.y);
     diffuse *= 1.0 - F_NoV;
 
     specular *= surface.tint;
