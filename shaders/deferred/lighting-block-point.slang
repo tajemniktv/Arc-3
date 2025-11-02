@@ -208,7 +208,7 @@ void applyPointLights(ComputeInput input) {
             //float3 F_VoH = material_fresnel(albedo, f0_metal, roughL, VoHm);
             float3 F_VoH = F_schlickRough(VoHm, f0, roughL);
             
-            diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL);
+            diffuse += lightColor * SampleLightDiffuse(NoVm, NoLm, LoHm, roughL) * saturate(1.0 - F_VoH);
             specular += lightColor * SampleLightSpecular(NoLm, NoHm, NoVm, F_VoH, roughL);
         }
 
@@ -217,6 +217,9 @@ void applyPointLights(ComputeInput input) {
         // remove diffuse for smooth metals
         float smoothness = 1.0 - roughness;
         diffuse *= 1.0 - metalness * smoothness;
+
+        float3 specular_tint = lerp(1.0, albedo, metalness);
+        specular *= specular_tint;
     }
 
     if (DEBUG_LIGHT_TILES) {

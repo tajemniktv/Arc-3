@@ -46,25 +46,25 @@ float2 GetPixelRadius(const in float blockRadius, const in int cascade) {
     return blockRadius * GetShadowProjectionScale(cascade).xy;
 }
 
+float2x2 GetSampleRotation(const in float dither) {
+    float angle = dither * (2.0*PI);
+    float s = sin(angle);
+    float c = cos(angle);
+
+    return float2x2(
+         c, s,
+        -s, c);
+}
+
 float SampleShadow(in float3 shadowPos, const in int cascade) {
-    if (any(saturate(shadowPos) != shadowPos)) return 1.0;
+    // if (any(saturate(shadowPos) != shadowPos)) return 1.0;
 
     float3 shadowCoord = float3(shadowPos.xy, cascade);
     return solidShadowMapFiltered.SampleCmp(shadowCoord, shadowPos.z).r;
 }
 
-float ShadowBlockerDistance(const in float3 shadowPos, const in int cascade, const in float2 pixelRadius, const in float dither) {
-    //float dither = GetShadowDither();
-    //float zRange = GetShadowRange(cascade);
-    float zRange = GetShadowProjectionScale(cascade).z;
-    // TODO: why was this 1.0 instead of zero? bias issues?
-    float bias = 0.0;//GetShadowBias(cascade);
-
-    float angle = fract(dither) * (2.0 * PI);
-    float s = sin(angle), c = cos(angle);
-    float2x2 rotation = float2x2(
-         c, s,
-        -s, c);
+float ShadowBlockerDistance(const in float3 shadowPos, const in int cascade, const in float2 pixelRadius, const in float zRange, const in float dither) {
+    float2x2 rotation = GetSampleRotation(fract(dither + 0.681));
 
     float blockers = 0.0;
     float avgDist = 0.0;
@@ -79,7 +79,7 @@ float ShadowBlockerDistance(const in float3 shadowPos, const in int cascade, con
         sampleShadowPos.xy += pixelOffset;
 
         float texDepth = solidShadowMap.Sample(float3(sampleShadowPos.xy, cascade)).r;
-        float hitDist = max((sampleShadowPos.z - texDepth) / zRange - bias, 0.0);
+        float hitDist = max((sampleShadowPos.z - texDepth) / zRange, 0.0);
 
         avgDist += hitDist;
         blockers++;// += step(0.0, hitDist);
@@ -90,16 +90,9 @@ float ShadowBlockerDistance(const in float3 shadowPos, const in int cascade, con
 }
 
 float SampleShadow_PCF(const in float3 shadowPos, const in int cascade, const in float2 pixelRadius, const in float dither) {
-    if (any(saturate(shadowPos) != shadowPos)) return 1.0;
+    // if (any(saturate(shadowPos) != shadowPos)) return 1.0;
 
-    //float dither = GetShadowDither();
-    float bias = 0.0;//GetShadowBias(cascade);
-
-    float angle = fract(dither) * (2.0 * PI);
-    float s = sin(angle), c = cos(angle);
-    float2x2 rotation = float2x2(
-         c, s,
-        -s, c);
+    float2x2 rotation = GetSampleRotation(fract(dither + 0.183));
 
     float shadowFinal = 0.0;
     for (int i = 0; i < SHADOW_PCF_SAMPLES; i++) {
@@ -108,7 +101,7 @@ float SampleShadow_PCF(const in float3 shadowPos, const in int cascade, const in
         
         float2 pcfDiskOffset = r * float2(cos(theta), sin(theta));
         float2 pixelOffset = mul(rotation, pcfDiskOffset) * pixelRadius;
-        float3 sampleShadowPos = shadowPos + float3(pixelOffset, -bias);
+        float3 sampleShadowPos = shadowPos + float3(pixelOffset, 0.0);
 
         shadowFinal += SampleShadow(sampleShadowPos, cascade);
     }
@@ -149,7 +142,7 @@ float SampleShadow_PCSS(const in float3 shadowPos, const in int cascade, const i
     float3 projectionScale = GetShadowProjectionScale(cascade);
 
     float2 maxPixelRadius = Shadow_MaxPcfSize * projectionScale.xy;
-    float blockerDistance = ShadowBlockerDistance(shadowPos, cascade, maxPixelRadius, dither);
+    float blockerDistance = ShadowBlockerDistance(shadowPos, cascade, maxPixelRadius, projectionScale.z, dither);
 
     const float shadowPixelSize = rcp(Shadow_Resolution);
     const float minShadowPixelRadius = 0.5 * shadowPixelSize;
@@ -172,17 +165,8 @@ float SampleShadow_PCSS(const in float3 shadowPos, const in int cascade, const i
 
 // [coverage, distance]
 float2 SSS_PCF(const in float3 shadowPos, const in int cascade, const in float2 pixelRadius, const in float bias_scale, const in float sss, const in float dither) {
+    float2x2 rotation = GetSampleRotation(fract(dither));
     float seed_pos = hash13(shadowPos * 999.0);
-
-    float angle = fract(dither) * (2.0*PI);
-    float s = sin(angle);
-    float c = cos(angle);
-    float2x2 rotation = float2x2(
-         c, s,
-        -s, c);
-
-    const float GoldenAngle = PI * (3.0 - sqrt(5.0));
-    const float PHI = (1.0 + sqrt(5.0)) / 2.0;
 
     float shadowFinal = 0.0;
     float distFinal = 0.0;
