@@ -5,8 +5,6 @@ import lib.common;
 extern static const uint BLOOM_INDEX;
 extern static const uint MIP_INDEX;
 
-ConstantBuffer<SettingsBuffer> settings;
-
 Sampler2D<float3> texSource;
 Sampler2D<float3> texBloom;
 

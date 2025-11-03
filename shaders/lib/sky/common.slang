@@ -5,8 +5,6 @@ import lib.common;
 import lib.hg;
 
 
-ConstantBuffer<SettingsBuffer> settings;
-
 static const uint2 skyTransmitDimensions = uint2(128, 64);
 static const uint2 skyViewDimensions = 256;
 static const uint2 skyIrradianceDimensions = 32;

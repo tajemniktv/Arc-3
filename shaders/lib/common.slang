@@ -1,4 +1,7 @@
 import aperture;
+import buffers.settings;
+
+ConstantBuffer<SettingsBuffer> settings;
 
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;

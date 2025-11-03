@@ -6,8 +6,6 @@ static const float DRAG_MULT = 0.002;
 static const float WaterWaveSurfaceOffset = 0.8;
 static const float Scene_WaterWaveHeight = 0.8;
 
-ConstantBuffer<SettingsBuffer> settings;
-
 // int WaterWaveOctaveMin = int(ceil(settings.Water_WaveDetail * 0.75));
 // int WaterWaveOctaveMax = settings.Water_WaveDetail;
 

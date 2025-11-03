@@ -60,7 +60,7 @@ VertexOutput vertexMain(Vertex input) {
         uint blockMapId = ap.blocks[output.blockId].customId;
         if (blockMapId == BLOCK_WATER) {
             float viewDist = length(output.viewPos);
-            int octaves = int(lerp(12.0, 4.0, saturate(viewDist / 64.0)));
+            int octaves = int(lerp(settings.Water_WaveDetail, 4.0, saturate(viewDist / 64.0)));
             float3 waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves);
             output.localPos.y += waveOffset.y;
         }
