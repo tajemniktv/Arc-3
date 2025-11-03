@@ -1,8 +1,10 @@
 import aperture;
 import lib.common;
+import lib.sampling.catmull_rom;
 
 extern static const float TAA_RejectionStrength = 0.6;
 extern static const int EFFECT_TAA_MAX_ACCUM = 16;
+extern static const bool SharpenHistory = true;
 static const uint groupResX = 16;
 static const uint groupResY = 16;
 
@@ -12,15 +14,15 @@ RWTexture2D<float4> imgFinal;
 [[vk::image_format("rgba16f")]]
 RWTexture2D<float4> imgFinalPrev;
 
-Sampler2D<float4> texSource;
-Sampler2D<float4> texFinalPrev;
-Sampler2D<float2> texVelocity;
+Sampler2D<half3> texSource;
+Sampler2D<half4> texFinalPrev;
+Sampler2D<half2> texVelocity;
 Sampler2D<float> mainDepthTex;
 
 static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
-groupshared float3 sharedBuffer[sharedBufferSize];
+groupshared half3 sharedBuffer[sharedBufferSize];
 
 
 static const float3x3 RGB_TO_YUV = float3x3(
@@ -77,7 +79,7 @@ void applyTaa(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = texSource[uv_base + uv_i].rgb;
+                half3 color = texSource[uv_base + uv_i];
                 sharedBuffer[i_shared] = color;
             }
         }
@@ -92,22 +94,28 @@ void applyTaa(ComputeInput input) {
         float2 texcoord = (input.globalPos.xy + 0.5) / float2(ap.game.screenSize);
         float2 uv_prev = getReprojectedClipPos(texcoord, depth, velocity);
 
-        float4 lastColor = texFinalPrev.SampleLevel(uv_prev, 0);
+        half4 lastColor;
+        if (SharpenHistory) {
+            lastColor = sample_CatmullRom_RGBA(texFinalPrev, uv_prev, ap.game.screenSize);
+        }
+        else {
+            lastColor = texFinalPrev.SampleLevel(uv_prev, 0);
+        }
 
         float mixRate = clamp(lastColor.a, 0.0, EFFECT_TAA_MAX_ACCUM);
 
         if (any(saturate(uv_prev) != uv_prev)) mixRate = 0.0;
         
         int2 uv = input.localPos.xy + 1;
-        float3 in0 = sharedBuffer[getSharedIndex(uv)].rgb;
-        float3 in1 = sharedBuffer[getSharedIndex(uv + int2(+1,  0))].rgb;
-        float3 in2 = sharedBuffer[getSharedIndex(uv + int2(-1,  0))].rgb;
-        float3 in3 = sharedBuffer[getSharedIndex(uv + int2( 0, +1))].rgb;
-        float3 in4 = sharedBuffer[getSharedIndex(uv + int2( 0, -1))].rgb;
-        float3 in5 = sharedBuffer[getSharedIndex(uv + int2(+1, +1))].rgb;
-        float3 in6 = sharedBuffer[getSharedIndex(uv + int2(-1, +1))].rgb;
-        float3 in7 = sharedBuffer[getSharedIndex(uv + int2(+1, -1))].rgb;
-        float3 in8 = sharedBuffer[getSharedIndex(uv + int2(-1, -1))].rgb;
+        half3 in0 = sharedBuffer[getSharedIndex(uv)];
+        half3 in1 = sharedBuffer[getSharedIndex(uv + int2(+1,  0))];
+        half3 in2 = sharedBuffer[getSharedIndex(uv + int2(-1,  0))];
+        half3 in3 = sharedBuffer[getSharedIndex(uv + int2( 0, +1))];
+        half3 in4 = sharedBuffer[getSharedIndex(uv + int2( 0, -1))];
+        half3 in5 = sharedBuffer[getSharedIndex(uv + int2(+1, +1))];
+        half3 in6 = sharedBuffer[getSharedIndex(uv + int2(-1, +1))];
+        half3 in7 = sharedBuffer[getSharedIndex(uv + int2(+1, -1))];
+        half3 in8 = sharedBuffer[getSharedIndex(uv + int2(-1, -1))];
 
         float3 antialiased = lerp(lastColor.rgb * lastColor.rgb, in0 * in0, rcp(1.0 + mixRate));
         antialiased = sqrt(antialiased);
