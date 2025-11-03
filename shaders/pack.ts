@@ -512,11 +512,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     postRender.createComposite("composite-overlays")
         .location("composite/overlays", "applyOverlays")
-        .target(0, finalFlipper.getReadTexture())
+        .target(0, finalFlipper.getWriteTexture())
         .overrideObject('texSource', finalFlipper.getReadTexture().name())
         .compile();
 
-    // finalFlipper.flip();
+    finalFlipper.flip();
         
     if (options.Debug_Histogram) {
         postRender.createCompute('histogram-clear')

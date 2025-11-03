@@ -30,7 +30,8 @@ static const bool SupportsTexNormals = !RENDER_PARTICLES;
 
 
 uint GetWaveOctaveCount(const in float viewDist) {
-    return int(lerp(settings.Water_WaveDetail, 6.0, saturate(viewDist / 80.0)));
+    float value = lerp(settings.Water_WaveDetail, 6.0, saturate(viewDist / 80.0));
+    return clamp(int(value), 1, 32);
 }
 
 
@@ -300,7 +301,14 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     // clamp to avoid buffer overflow
     output.color = clamp(output.color, 0.0, 65000.0);
 
-    output.normal = float4(tex_normal * 0.5 + 0.5, 1.0);
+    // Refraction
+    float3 refractSurfaceNormal = tex_normal - geo_normal;
+    // if (MATERIAL_ROUGH_REFRACT) {
+    //     randomize_reflection(refractSurfaceNormal, localGeoNormal, roughness);
+    // }
+
+    refractSurfaceNormal = normalize(refractSurfaceNormal);
+    output.normal = float4(refractSurfaceNormal * 0.5 + 0.5, 1.0);
     
     return output;
 }
