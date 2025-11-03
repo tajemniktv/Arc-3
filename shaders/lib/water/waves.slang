@@ -1,4 +1,3 @@
-import buffers.settings;
 import lib.common;
 
 static const float DRAG_MULT = 0.002;

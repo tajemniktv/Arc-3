@@ -1,6 +1,5 @@
 import aperture;
 import buffers.scene;
-import buffers.settings;
 import lib.common;
 import lib.hg;
 

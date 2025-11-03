@@ -1,5 +1,4 @@
 import aperture;
-import buffers.settings;
 import lib.common;
 import lib.sampling.atlas;
 import lib.sampling.linear;

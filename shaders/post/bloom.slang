@@ -1,5 +1,4 @@
 import aperture;
-import buffers.settings;
 import lib.common;
 
 extern static const uint BLOOM_INDEX;

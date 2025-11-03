@@ -96,7 +96,7 @@ float ShadowBlockerDistance(const in float3 shadowPos, const in int cascade, con
         float3 sampleShadowPos = shadowPos;
         sampleShadowPos.xy += pixelOffset;
 
-        float texDepth = solidShadowMap.Sample(float3(sampleShadowPos.xy, cascade)).r;
+        float texDepth = shadowMap.Sample(float3(sampleShadowPos.xy, cascade)).r;
         float hitDist = max((sampleShadowPos.z - texDepth) / zRange, 0.0);
 
         avgDist += hitDist;

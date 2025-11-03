@@ -207,7 +207,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     float metalness = mat_metalness(f0_metal);
 
     if (!isWater) {
-        float3 tint = lerp(1.0, albedo.rgb, albedo.a);
+        float3 tint = lerp(1.0, albedo.rgb, pow2(albedo.a));
         output.tint = float4(tint, 1.0);
     }
 

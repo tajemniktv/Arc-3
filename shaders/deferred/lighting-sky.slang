@@ -103,8 +103,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
         output.diffuse += sssFinal / PI;
         
         
-        float3 shadow = texShadowFinal[uv];
-        shadow = RgbToLinear(shadow);
+        float3 shadow = RgbToLinear(texShadowFinal[uv]);
         bool shadowIsSun = dot(ap.celestial.position, ap.celestial.sunPosition) > 0.0;
 
         sun.color *= shadowIsSun ? shadow : 1.0;
