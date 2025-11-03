@@ -74,7 +74,8 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
         if (cascade >= 0) {
             float3 shadowPos = mul3(ap.celestial.projection[cascade], shadowViewPos) * 0.5 + 0.5;
 
-            output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
+            // output.shadow = SampleShadow_PCSS(shadowPos, cascade, dither);
+            output.shadow.rgb = SampleShadowColor_PCSS(shadowPos, cascade, dither);
         }
 
         // SSS

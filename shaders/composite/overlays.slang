@@ -1,4 +1,5 @@
 import aperture;
+import lib.common;
 
 static const int REFRACTION_STEPS = 8;
 
@@ -6,6 +7,7 @@ Sampler2D<float> solidDepthTex;
 Sampler2D<half3> texSource;
 Sampler2D<half4> texFinalTranslucent;
 Sampler2D<half3> texNormalTranslucent;
+Sampler2D<half3> texTintTranslucent;
 Sampler2D<half4> texWeather;
 
 
@@ -14,8 +16,10 @@ float4 applyOverlays(float2 pos : SV_Position) : SV_Target0 {
     uint2 uv = uint2(pos);
 
     half4 weather = texWeather[uv];
+    half3 tint = texTintTranslucent[uv];
     half4 tranlsucent = texFinalTranslucent[uv];
     float3 tranlsucent_normal = texNormalTranslucent[uv];
+
     tranlsucent_normal = normalize(tranlsucent_normal * 2.0 - 1.0);
 
     // TODO: refraction tracing?
@@ -40,11 +44,12 @@ float4 applyOverlays(float2 pos : SV_Position) : SV_Target0 {
     //     refract_uv = sample_uv;
     // }
 
-    half3 color = texSource.Sample(refract_uv);
+    half3 opaque_color = texSource.Sample(refract_uv);
+    opaque_color *= RgbToLinear(tint);
 
-    color.rgb = lerp(color.rgb, tranlsucent.rgb, tranlsucent.a);
+    half3 final_color = lerp(opaque_color, tranlsucent.rgb, tranlsucent.a);
 
-    color.rgb += weather.rgb * half3(0.25);
+    final_color.rgb += weather.rgb * half3(0.25);
 
-    return half4(color, half2(1.0).x);
+    return half4(final_color, half2(1.0).x);
 }

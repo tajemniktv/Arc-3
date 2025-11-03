@@ -44,6 +44,8 @@ float4 fragmentMain(VertexOutput input) : SV_Target0 {
     else if (ALPHATEST_ENABLED) {
         color = albedoTex.Sample(input.uv) * input.color;
         iris_discardIfNeeded(color);
+
+        color.rgb = lerp(color.rgb, 0.0, pow2(color.a));
     }
 
     return color;

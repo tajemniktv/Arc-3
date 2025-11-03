@@ -115,6 +115,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
+    const texTintTranslucent = pipeline.createTexture("texTintTranslucent")
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGB8)
+        .clearColor(1, 1, 1, 1)
+        .build();
+
     const texNormalTranslucent = pipeline.createTexture("texNormalTranslucent")
         .width(screenWidth)
         .height(screenHeight)
@@ -166,10 +173,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .clearColor(0, 0, 0, 0)
         .build();
 
-    let texSkyTransmit : BuiltTexture | undefined;
-    let texSkyMultiScatter : BuiltTexture | undefined;
-    let texSkyView : BuiltTexture | undefined;
-    let texSkyIrradiance : BuiltTexture | undefined;
+    let texShadowColor: BuiltTexture | undefined;
+    let texSkyTransmit: BuiltTexture | undefined;
+    let texSkyMultiScatter: BuiltTexture | undefined;
+    let texSkyView: BuiltTexture | undefined;
+    let texSkyIrradiance: BuiltTexture | undefined;
     let texShadowGB: BuiltTexture | undefined;
     let texSssGB: BuiltTexture | undefined;
     let texWeather: BuiltTexture | undefined;
@@ -198,12 +206,12 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .format(Format.RGBA8)
             .build();
 
-        // const texShadowColor = pipeline.createArrayTexture('texShadowColor')
-        //     .format(Format.RGBA8)
-        //     .width(renderConfig.shadow.resolution)
-        //     .height(renderConfig.shadow.resolution)
-        //     .clearColor(0, 0, 0, 0)
-        //     .build();
+        texShadowColor = pipeline.createArrayTexture('texShadowColor')
+            .format(Format.RGBA8)
+            .width(renderConfig.shadow.resolution)
+            .height(renderConfig.shadow.resolution)
+            .clearColor(0, 0, 0, 0)
+            .build();
 
         texWeather = pipeline.createTexture('texWeather')
             .width(screenWidth)
@@ -362,6 +370,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     ].forEach((pass: ShadowPass) => {
         shadowSkyShader(pass[0], pass[1])
             .exportBool('ALPHATEST_ENABLED', true)
+            .target(0, texShadowColor).blendOff(0)
             .compile();
     });
 
@@ -417,8 +426,9 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     function translucentObjectShader(name: string, usage: ProgramUsage) {
         const shader = pipeline.createObjectShader(name, usage)
             .location("objects/translucent")
-            .target(0, texFinalTranslucent).blendFunc(0, Func.ONE, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-            .target(1, texNormalTranslucent).blendFunc(1, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
+            .target(0,  texFinalTranslucent).blendFunc(0, Func.ONE, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .target(1,   texTintTranslucent).blendFunc(1, Func.DST_COLOR, Func.ZERO, Func.ZERO, Func.ZERO)
+            .target(2, texNormalTranslucent).blendOff(2);
 
         //if (options.Post_TAA_Enabled) shader.target(1, texVelocity).blendOff(1);
         return shader;
