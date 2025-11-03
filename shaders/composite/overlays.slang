@@ -23,7 +23,7 @@ float4 applyOverlays(float2 pos : SV_Position) : SV_Target0 {
     tranlsucent_normal = normalize(tranlsucent_normal * 2.0 - 1.0);
 
     // TODO: refraction tracing?
-    float2 refract_uv = uv / float2(ap.game.screenSize);
+    float2 refract_uv = pos / ap.game.screenSize;
     // float3 refractViewNormal = mul(float3x3(ap.camera.view), refractSurfaceNormal - localGeoNormal);
 
     // const float refractEta = (IOR_AIR/IOR_WATER);
