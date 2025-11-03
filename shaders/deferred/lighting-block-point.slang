@@ -33,10 +33,12 @@ RWTexture2D<half3> imgSpecular;
 [[vk::image_format("rgba8")]]
 RWTexture2D<float4> imgDebug;
 
-Sampler2D<float4> texAlbedoGB;
+Sampler2D<float> solidDepthTex;
+
+Sampler2D<half4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
-Sampler2D<float> mainDepthTex;
+
 SamplerCubeArrayShadow pointLightFiltered;
 
 
@@ -82,7 +84,7 @@ void applyPointLights(ComputeInput input) {
 
     GroupMemoryBarrierWithGroupSync();
 
-    float depth = mainDepthTex[input.globalPos.xy];
+    float depth = solidDepthTex[input.globalPos.xy];
     if (depth < 1.0) {
         float depthL = linearizeDepth(depth * 2.0 - 1.0, ap.camera.near, ap.camera.far);
         float depthInt = depthL / ap.camera.far * uint.maxValue;

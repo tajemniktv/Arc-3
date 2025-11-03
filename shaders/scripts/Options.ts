@@ -1,10 +1,12 @@
 export class Options {
     get Sky_SeaLevel(): number {return 62;}
 
+    get Water_Wave_Enabled(): boolean {return false;}
     get Water_WaveDetail(): number {return 20;}
     get Water_WaveHeight(): number {return 1.0;}
 
     get Material_Format(): number {return getIntSetting('MATERIAL_FORMAT');}
+    get Material_RefractMode(): number {return 0;}
 
     get Material_Parallax_Enabled(): boolean {return getBoolSetting('MATERIAL_PARALLAX_ENABLED');}
     get Material_Parallax_Type(): number {return getIntSetting('MATERIAL_PARALLAX_TYPE');}

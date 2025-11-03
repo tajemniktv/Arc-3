@@ -11,28 +11,29 @@ extern static const bool World_HasSky;
 
 StructuredBuffer<SceneBuffer> scene;
 
+Sampler2D<float> solidDepthTex;
+
 Sampler2D<half4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 Sampler2D<half3> texDiffuse;
 Sampler2D<half3> texSpecular;
-Sampler2D<float> mainDepthTex;
 
 
 [[shader("fragment")]]
 half4 lightingFinal(float2 pos : SV_Position) : SV_Target0 {
     uint2 uv = uint2(pos);
-    float depth = mainDepthTex[uv];
+    float depth = solidDepthTex[uv];
 
-    half3 final = half(0.0);
+    half3 final = half3(0.0);
     if (depth < 1.0) {
         // uint2 normals = texNormalGB[uv];
         // float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normals.r).xyz * 2.0 - 1.0);
         // float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normals.g).xyz * 2.0 - 1.0);
 
         uint2 matLightData = texMatLightGB[uv];
-        float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
-        float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
+        half4 specularData = unpackUnorm4x8ToHalf(matLightData.r);
+        half4 lightData = unpackUnorm4x8ToHalf(matLightData.g);
 
         float occlusion = lightData.b;
 

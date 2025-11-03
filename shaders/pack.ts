@@ -21,6 +21,10 @@ let settings: BuiltStreamingBuffer | undefined;
 
 let _renderConfig: RendererConfig;
 
+const Refract_WorldSpace = 2;
+const Refract_ScreenSpace = 1;
+const Refract_None = 0;
+
 
 export function configureRenderer(config: RendererConfig): void {
     const options = new Options();
@@ -64,8 +68,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     BlockMappings = new BlockMap();
     BlockMappings.map('water', 'BLOCK_WATER');
     BlockMappings.map('lava', 'BLOCK_LAVA');
-    // BlockMappings.map('end_portal', 'BLOCK_END_PORTAL');
-    // BlockMappings.map('grass_block', 'BLOCK_GRASS');
 
     const globalExports = pipeline.createExportList()
         .addInt('DIMENSION', dimension.Index)
@@ -83,7 +85,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     for (let blockName in BlockMappings.mappings) {
         const meta = BlockMappings.get(blockName);
-        // defineGlobally(meta.define, meta.index.toString());
         globalExports.addInt(meta.define, meta.index);
     }
         
@@ -435,6 +436,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     translucentObjectShader("terrain-translucent", Usage.TERRAIN_TRANSLUCENT)
+        .exportBool('Water_WaveEnabled', options.Water_Wave_Enabled)
         .exportBool('RENDER_TERRAIN', true)
         .compile();
 
@@ -454,199 +456,201 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .compile();
     }
-        
-    const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
-
-    if (dimension.World_HasSky) {
-        stagePostOpaque.createComposite("deferred-shadow-sky")
-            .location("deferred/shadow-sky", "skyShadowSss")
-            .target(0, texShadowGB)
-            .target(1, texSssGB)
-            .compile();
-
-        stagePostOpaque.createCompute("deferred-shadow-sky-filter")
-            .location("deferred/shadow-sky-filter", "filterShadowSss")
-            .workGroups(
-                Math.ceil(screenWidth / 16),
-                Math.ceil(screenHeight / 16),
-                1)
-            .compile();
-
-        stagePostOpaque.createComposite("deferred-lighting-sky")
-            .location("deferred/lighting-sky", "lightingSky")
-            .target(0, texDiffuse)
-            .target(1, texSpecular)
-            .compile();
-    }
-
-    stagePostOpaque.createComposite("deferred-lighting-block-hand")
-        .location("deferred/lighting-block-hand", "lightingBlockHand")
-        .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
-        .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
-        //.overrideObject()
-        .compile();
-
-    if (options.Lighting_Point_Enabled) {
-        stagePostOpaque.createCompute("deferred-lighting-block-point")
-            .location("deferred/lighting-block-point", "applyPointLights")
-            .workGroups(
-                Math.ceil(screenWidth / 16.0),
-                Math.ceil(screenHeight / 16.0),
-                1)
-            .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
-            .compile();
-    }
-
-    stagePostOpaque.createComposite("deferred-lighting-final")
-        .location("deferred/lighting-final", "lightingFinal")
-        .target(0, finalFlipper.getWriteTexture())
-        .compile();
-
-    stagePostOpaque.end();
-
-    // finalFlipper.flip();
-
-    const postRender = pipeline.forStage(Stage.POST_RENDER);
-
-    finalFlipper.flip();
-
-    postRender.createComposite("composite-overlays")
-        .location("composite/overlays", "applyOverlays")
-        .target(0, finalFlipper.getWriteTexture())
-        .overrideObject('texSource', finalFlipper.getReadTexture().name())
-        .compile();
-
-    finalFlipper.flip();
-        
-    if (options.Debug_Histogram) {
-        postRender.createCompute('histogram-clear')
-            .location('setup/histogram-clear', "clearHistogram")
-            .workGroups(1, 1, 1)
-            .compile();
-    }
-
-    postRender.createCompute('histogram')
-        .location('post/histogram-exposure', "buildHistogram")
-        .workGroups(
-            Math.ceil(screenWidth / 16.0),
-            Math.ceil(screenHeight / 16.0),
-            1)
-        .overrideObject('texSource', finalFlipper.getReadTexture().name())
-        .compile();
-
-    postRender.createCompute('exposure-compute')
-        .location('post/histogram-exposure', "computeExposure")
-        .workGroups(1, 1, 1)
-        .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
-        .compile();
-
-    postRender.createComposite("exposure-apply")
-        .location("post/expose", "applyExposure")
-        .target(0, finalFlipper.getWriteTexture())
-        .overrideObject("texSource", finalFlipper.getReadTexture().name())
-        .compile();
-
-    if (options.Post_Bloom_Enabled) {
+    
+    withStage(pipeline, Stage.POST_RENDER, postRenderStage => {
         finalFlipper.flip();
 
-        const screenWidth_half = Math.ceil(screenWidth / 2.0);
-        const screenHeight_half = Math.ceil(screenHeight / 2.0);
-    
-        let maxLod = Math.log2(Math.min(screenWidth, screenHeight));
-        maxLod = Math.floor(maxLod - 2);
-        maxLod = Math.max(Math.min(maxLod, 8), 0);
-    
-        const texBloom = pipeline.createTexture('texBloom')
-            .format(Format.RGB16F)
-            .width(screenWidth_half)
-            .height(screenHeight_half)
-            .mipmap(true)
-            .clear(false)
-            .build();
-    
-        const bloomStage = postRender.subList('Bloom');
-    
-        for (let i = 0; i < maxLod; i++) {
-            bloomStage.createComposite(`bloom-down-${i}`)
-                .location("post/bloom", "applyBloomDown")
-                .target(0, texBloom, i)
-                .overrideObject("texSource", i == 0 ? finalFlipper.getReadTexture().name() : 'texBloom')
-                .exportInt("MIP_INDEX", Math.max(i-1, 0))
+        if (options.Material_RefractMode == Refract_WorldSpace) {
+            // TODO: rewrite opaque gbuffer data with WS refraction?
+        }
+
+        withSubList(postRenderStage, 'opaque-deferred', opaqueStage => {
+            if (dimension.World_HasSky) {
+                opaqueStage.createComposite("deferred-shadow-sky")
+                    .location("deferred/shadow-sky", "skyShadowSss")
+                    .target(0, texShadowGB)
+                    .target(1, texSssGB)
+                    .compile();
+
+                opaqueStage.createCompute("deferred-shadow-sky-filter")
+                    .location("deferred/shadow-sky-filter", "filterShadowSss")
+                    .workGroups(
+                        Math.ceil(screenWidth / 16),
+                        Math.ceil(screenHeight / 16),
+                        1)
+                    .compile();
+
+                opaqueStage.createComposite("deferred-lighting-sky")
+                    .location("deferred/lighting-sky", "lightingSky")
+                    .target(0, texDiffuse)
+                    .target(1, texSpecular)
+                    .compile();
+            }
+
+            opaqueStage.createComposite("deferred-lighting-block-hand")
+                .location("deferred/lighting-block-hand", "lightingBlockHand")
+                .target(0, texDiffuse).blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
+                .target(1, texSpecular).blendFunc(1, Func.ONE, Func.ONE, Func.ONE, Func.ONE)
                 .compile();
-        }
-    
-        for (let i = maxLod-1; i >= 0; i--) {
-            const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
-                .location('post/bloom', "applyBloomUp")
-                .overrideObject("texSource", finalFlipper.getReadTexture().name())
-                .exportInt("BLOOM_INDEX", i)
-                .exportInt("MIP_INDEX", Math.max(i, 0));
+
+            if (options.Lighting_Point_Enabled) {
+                opaqueStage.createCompute("deferred-lighting-block-point")
+                    .location("deferred/lighting-block-point", "applyPointLights")
+                    .workGroups(
+                        Math.ceil(screenWidth / 16.0),
+                        Math.ceil(screenHeight / 16.0),
+                        1)
+                    .exportBool('DEBUG_LIGHT_TILES', DEBUG_LIGHT_TILES)
+                    .compile();
+            }
+
+            opaqueStage.createComposite("deferred-lighting-final")
+                .location("deferred/lighting-final", "lightingFinal")
+                .target(0, finalFlipper.getWriteTexture())
+                .compile();
+        });
+
+        withSubList(postRenderStage, 'translucent-composite', translucentStage => {
+            finalFlipper.flip();
+
+            translucentStage.createComposite("composite-overlays")
+                .location("composite/overlays", "applyOverlays")
+                .target(0, finalFlipper.getWriteTexture())
+                .overrideObject('texSource', finalFlipper.getReadTexture().name())
+                .exportInt('RefractMode', options.Material_RefractMode)
+                .compile();
+        });
+
+        withSubList(postRenderStage, 'final', finalStage => {
+            finalFlipper.flip();
                 
-            if (i == 0) {
-                bloomUpShader.target(0, finalFlipper.getWriteTexture())
-                    .blendFunc(0, Func.ONE, Func.ZERO, Func.ONE, Func.ZERO);
-            }
-            else {
-                bloomUpShader.target(0, texBloom, i-1)
-                    .blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE);
+            if (options.Debug_Histogram) {
+                finalStage.createCompute('histogram-clear')
+                    .location('setup/histogram-clear', "clearHistogram")
+                    .workGroups(1, 1, 1)
+                    .compile();
             }
 
-            bloomUpShader.compile();
-        }
-    
-        bloomStage.end();
-    }
+            finalStage.createCompute('histogram')
+                .location('post/histogram-exposure', "buildHistogram")
+                .workGroups(
+                    Math.ceil(screenWidth / 16.0),
+                    Math.ceil(screenHeight / 16.0),
+                    1)
+                .overrideObject('texSource', finalFlipper.getReadTexture().name())
+                .compile();
 
-    if (options.Post_TAA_Enabled) {
-        texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
-        imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
+            finalStage.createCompute('exposure-compute')
+                .location('post/histogram-exposure', "computeExposure")
+                .workGroups(1, 1, 1)
+                .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
+                .compile();
 
-        finalFlipper.flip();
+            finalStage.createComposite("exposure-apply")
+                .location("post/expose", "applyExposure")
+                .target(0, finalFlipper.getWriteTexture())
+                .overrideObject("texSource", finalFlipper.getReadTexture().name())
+                .compile();
 
-        postRender.createCompute("taa")
-            .location("post/taa", "applyTaa")
-            .workGroups(
-                Math.ceil(screenWidth / 16),
-                Math.ceil(screenHeight / 16),
-                1)
-            .overrideObject("texSource", finalFlipper.getReadTexture().name())
-            .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
-            .compile();
-    }
+            if (options.Post_Bloom_Enabled) {
+                finalFlipper.flip();
 
-    finalFlipper.flip();
+                const screenWidth_half = Math.ceil(screenWidth / 2.0);
+                const screenHeight_half = Math.ceil(screenHeight / 2.0);
+            
+                let maxLod = Math.log2(Math.min(screenWidth, screenHeight));
+                maxLod = Math.floor(maxLod - 2);
+                maxLod = Math.max(Math.min(maxLod, 8), 0);
+            
+                const texBloom = pipeline.createTexture('texBloom')
+                    .format(Format.RGB16F)
+                    .width(screenWidth_half)
+                    .height(screenHeight_half)
+                    .mipmap(true)
+                    .clear(false)
+                    .build();
+            
+                withSubList(finalStage, 'Bloom', bloomStage => {
+                    for (let i = 0; i < maxLod; i++) {
+                        bloomStage.createComposite(`bloom-down-${i}`)
+                            .location("post/bloom", "applyBloomDown")
+                            .target(0, texBloom, i)
+                            .overrideObject("texSource", i == 0 ? finalFlipper.getReadTexture().name() : 'texBloom')
+                            .exportInt("MIP_INDEX", Math.max(i-1, 0))
+                            .compile();
+                    }
+                
+                    for (let i = maxLod-1; i >= 0; i--) {
+                        const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
+                            .location('post/bloom', "applyBloomUp")
+                            .overrideObject("texSource", finalFlipper.getReadTexture().name())
+                            .exportInt("BLOOM_INDEX", i)
+                            .exportInt("MIP_INDEX", Math.max(i, 0));
+                            
+                        if (i == 0) {
+                            bloomUpShader.target(0, finalFlipper.getWriteTexture())
+                                .blendFunc(0, Func.ONE, Func.ZERO, Func.ONE, Func.ZERO);
+                        }
+                        else {
+                            bloomUpShader.target(0, texBloom, i-1)
+                                .blendFunc(0, Func.ONE, Func.ONE, Func.ONE, Func.ONE);
+                        }
 
-    postRender.createComposite("tonemap")
-        .location("post/tonemap", "applyTonemap")
-        .target(0, finalFlipper.getWriteTexture())
-        .overrideObject("texSource", finalFlipper.getReadTexture().name())
-        .compile();
+                        bloomUpShader.compile();
+                    }
+                });
+            }
 
-    if (options.Post_TAA_Enabled) {
-        finalFlipper.flip();
+            if (options.Post_TAA_Enabled) {
+                texFinalPrevRef = pipeline.createTextureReference("texFinalPrev", null, screenWidth, screenHeight, 1, Format.RGBA16F);
+                imgFinalPrevRef = pipeline.createTextureReference(null, "imgFinalPrev", screenWidth, screenHeight, 1, Format.RGBA16F);
 
-        postRender.createCompute("sharpen")
-            .location("post/sharpen", "sharpen")
-            .workGroups(
-                Math.ceil(screenWidth / 16),
-                Math.ceil(screenHeight / 16),
-                1)
-            .overrideObject("texSource", finalFlipper.getReadTexture().name())
-            .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
-            .compile();
-    }
+                finalFlipper.flip();
 
-    if (options.Debug_Material > 0 || options.Debug_Histogram || DEBUG_LIGHT_TILES) {
-        postRender.createComposite("debug")
-            .location("post/debug", "renderDebugOverlay")
-            .target(0, finalFlipper.getWriteTexture())
-            .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-            .exportInt('DEBUG_MATERIAL', options.Debug_Material)
-            .exportBool('DEBUG_HISTOGRAM', options.Debug_Histogram)
-            .compile();
-    }
+                finalStage.createCompute("taa")
+                    .location("post/taa", "applyTaa")
+                    .workGroups(
+                        Math.ceil(screenWidth / 16),
+                        Math.ceil(screenHeight / 16),
+                        1)
+                    .overrideObject("texSource", finalFlipper.getReadTexture().name())
+                    .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
+                    .compile();
+            }
 
-    postRender.end();
+            finalFlipper.flip();
+
+            finalStage.createComposite("tonemap")
+                .location("post/tonemap", "applyTonemap")
+                .target(0, finalFlipper.getWriteTexture())
+                .overrideObject("texSource", finalFlipper.getReadTexture().name())
+                .compile();
+
+            if (options.Post_TAA_Enabled) {
+                finalFlipper.flip();
+
+                finalStage.createCompute("sharpen")
+                    .location("post/sharpen", "sharpen")
+                    .workGroups(
+                        Math.ceil(screenWidth / 16),
+                        Math.ceil(screenHeight / 16),
+                        1)
+                    .overrideObject("texSource", finalFlipper.getReadTexture().name())
+                    .overrideObject("imgFinal", finalFlipper.getWriteTexture().imageName())
+                    .compile();
+            }
+
+            if (options.Debug_Material > 0 || options.Debug_Histogram || DEBUG_LIGHT_TILES) {
+                finalStage.createComposite("debug")
+                    .location("post/debug", "renderDebugOverlay")
+                    .target(0, finalFlipper.getWriteTexture())
+                    .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+                    .exportInt('DEBUG_MATERIAL', options.Debug_Material)
+                    .exportBool('DEBUG_HISTOGRAM', options.Debug_Histogram)
+                    .compile();
+            }
+        });
+    });
 
     finalFlipper.flip();
 
@@ -696,4 +700,40 @@ export function getBlockId(block: BlockState) : number {
     if (meta) return meta.index;
 
     return 0;
+}
+
+type CommandListAction = (list: CommandList) => void;
+
+// declare global {
+//     interface PipelineConfig {
+//         withStage(stage: ProgramStage, action: CommandListAction): void;
+//     }
+
+//     interface CommandList {
+//         withSubList(name: string, action: CommandListAction): void;
+//     }
+// }
+
+// PipelineConfig.prototype.withStage = function(this: PipelineConfig, stage: ProgramStage, action: CommandListAction): void {
+//     const list = this.forStage(stage);
+//     action(list);
+//     list.end();
+// };
+
+// CommandList.prototype.withSubList = function(this: CommandList, name: string, action: CommandListAction): void {
+//     const list = this.subList(name);
+//     action(list);
+//     list.end();
+// };
+
+function withStage(context: PipelineConfig, stage: ProgramStage, action: CommandListAction): void {
+    const list = context.forStage(stage);
+    action(list);
+    list.end();
+}
+
+function withSubList(context: CommandList, name: string, action: CommandListAction): void {
+    const list = context.subList(name);
+    action(list);
+    list.end();
 }

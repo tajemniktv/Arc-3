@@ -23,7 +23,7 @@ RWTexture2D<half3> imgShadowFinal;
 [[vk::image_format("rgba8")]]
 RWTexture2D<half3> imgSssFinal;
 
-Sampler2D<float> mainDepthTex;
+Sampler2D<float> solidDepthTex;
 Sampler2D<half3> texShadowGB;
 Sampler2D<half3> texSssGB;
 
@@ -96,7 +96,7 @@ void filterShadowSss(ComputeInput input) {
                 shadow = texShadowGB[uv].rgb;
                 sss = texSssGB[uv];
 
-                float depth = mainDepthTex[uv].r * 2.0 - 1.0;
+                float depth = solidDepthTex[uv].r * 2.0 - 1.0;
                 depthL = linearizeDepth(depth, ap.camera.near, ap.camera.far);
             }
 

@@ -14,7 +14,8 @@ extern static const bool TAA_Enabled;
 
 StructuredBuffer<SceneBuffer> scene;
 
-Sampler2D<float> mainDepthTex;
+Sampler2D<float> solidDepthTex;
+
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
@@ -48,7 +49,7 @@ FragmentOutput lightingSky(float2 pos : SV_Position) {
     output.specular = 0.0;
     
     uint2 uv = uint2(pos);
-    float depth = mainDepthTex[uv];
+    float depth = solidDepthTex[uv];
     
     if (depth < 1.0) {
         float2 texcoord = pos / ap.game.screenSize;

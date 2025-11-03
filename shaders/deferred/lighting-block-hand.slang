@@ -6,17 +6,17 @@ import lib.point_lights;
 import lib.light.floodfill;
 import lib.light.hand;
 
-// extern static const float BLOCK_LUX = 200.0;
 extern static const bool PointLight_Enabled;
 extern static const bool FloodFill_Enabled;
 extern static const bool TAA_Enabled;
 
 StructuredBuffer<SceneBuffer> scene;
 
-Sampler2D<float4> texAlbedoGB;
+Sampler2D<float> solidDepthTex;
+
+Sampler2D<half4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
-Sampler2D<float> mainDepthTex;
 
 
 struct FragmentOutput {
@@ -32,19 +32,19 @@ FragmentOutput lightingBlockHand(float2 pos : SV_Position) {
 
     uint2 uv = uint2(pos);
 
-    float4 colorData = texAlbedoGB[uv];
+    half4 colorData = texAlbedoGB[uv];
     uint2 normalData = texNormalGB[uv];
     uint2 matLightData = texMatLightGB[uv];
 
     float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
     float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
 
-    float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
-    float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
+    half4 specularData = unpackUnorm4x8ToHalf(matLightData.r);
+    half4 lightData = unpackUnorm4x8ToHalf(matLightData.g);
     float lmcoord_x = lightData.r * lightData.r;
     //float occlusion = light.b;
 
-    float depth = mainDepthTex[uv];
+    float depth = solidDepthTex[uv];
     if (depth < 1.0) {
         float2 texcoord = pos / ap.game.screenSize;
         if (TAA_Enabled) texcoord -= scene[0].taa_jitter;

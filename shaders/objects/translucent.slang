@@ -19,6 +19,7 @@ import lib.tbn;
 // extern static const float BLOCK_LUX;
 extern static const bool RENDER_TERRAIN = false;
 extern static const bool RENDER_PARTICLES = false;
+extern static const bool Water_WaveEnabled = false;
 extern static const bool FloodFill_Enabled;
 extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
@@ -80,16 +81,18 @@ VertexOutput vertexMain(Vertex input) {
     if (let value = input.blockId()) {
         output.blockId = value;
 
-        uint blockMapId = ap.blocks[output.blockId].customId;
-        float3 worldPos = output.localPos + input.midBlock().value/64.0 + ap.camera.position;
-        bool isAir = ap.voxel[int3(floor(worldPos + output.normal))].blockId == 0;
-        if (blockMapId == BLOCK_WATER && isAir && output.normal.y > EPSILON) {
-            output.waveStrength = 1.0;
+        if (Water_WaveEnabled) {
+            uint blockMapId = ap.blocks[output.blockId].customId;
+            float3 worldPos = output.localPos + input.midBlock().value/64.0 + ap.camera.position;
+            bool isAir = ap.voxel[int3(floor(worldPos + output.normal))].blockId == 0;
+            if (blockMapId == BLOCK_WATER && isAir && output.normal.y > EPSILON) {
+                output.waveStrength = 1.0;
 
-            float viewDist = length(output.viewPos);
-            int octaves = GetWaveOctaveCount(viewDist);
-            output.waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves).y;
-            output.localPos.y += output.waveOffset;
+                float viewDist = length(output.viewPos);
+                int octaves = GetWaveOctaveCount(viewDist);
+                output.waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves).y;
+                output.localPos.y += output.waveOffset;
+            }
         }
     }
 
@@ -155,7 +158,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
 
     float3 tex_normal = geo_normal;
     if (SupportsTexNormals) {
-        if (isWater && input.waveStrength > 0.5) {
+        if (Water_WaveEnabled && isWater && input.waveStrength > 0.5) {
             float3 offsetLocalPos = input.localPos;
             offsetLocalPos.y -= input.waveOffset;
 

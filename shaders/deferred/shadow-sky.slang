@@ -7,8 +7,9 @@ import lib.shadow;
 
 extern static const bool TAA_Enabled;
 
-Sampler2D<float> mainDepthTex;
-Sampler2D<float4> texAlbedoGB;
+Sampler2D<float> solidDepthTex;
+
+Sampler2D<half4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 
@@ -25,7 +26,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
     output.sss = float4(0.0, 0.0, 0.0, 1.0);
 
     uint2 uv = uint2(pos);
-    float depth = mainDepthTex[uv];
+    float depth = solidDepthTex[uv];
     
     if (depth < 1.0) {
         float2 texcoord = pos / ap.game.screenSize;
@@ -36,11 +37,11 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
         float3 localPos = mul3(ap.camera.viewInv, viewPos);
         float3 viewLocalDir = -normalize(localPos);
 
-        float4 colorData = texAlbedoGB[uv];
+        half4 colorData = texAlbedoGB[uv];
         uint2 normalData = texNormalGB[uv];
         uint2 matLightData = texMatLightGB[uv];
 
-        float4 specularData = unpackUnorm4x8ToFloat(matLightData.r);
+        half4 specularData = unpackUnorm4x8ToHalf(matLightData.r);
         // float3 albedo = RgbToLinear(colorData.rgb);
         // float roughness = mat_roughness(specularData.r);
         // float f0_metal = mat_f0_metal(specularData.g);
@@ -49,7 +50,7 @@ FragmentOutput skyShadowSss(float2 pos : SV_Position) {
         float3 geo_normal = normalize(unpackUnorm4x8ToFloat(normalData.r).xyz * 2.0 - 1.0);
         float3 tex_normal = normalize(unpackUnorm4x8ToFloat(normalData.g).xyz * 2.0 - 1.0);
 
-        float4 lightData = unpackUnorm4x8ToFloat(matLightData.g);
+        half4 lightData = unpackUnorm4x8ToHalf(matLightData.g);
 
         float dither;
         if (TAA_Enabled) {

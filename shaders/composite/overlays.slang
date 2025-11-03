@@ -2,9 +2,10 @@ import aperture;
 import lib.common;
 import lib.sampling.depth;
 
-extern static const bool EnableRefraction = true;
+extern static const int RefractMode;
 
 static const int REFRACTION_STEPS = 16;
+static const int Refract_ScreenSpace = 1;
 
 Sampler2D<float> mainDepthTex;
 Sampler2D<float> solidDepthTex;
@@ -55,7 +56,7 @@ float4 applyOverlays(float2 pos : SV_Position) : SV_Target0 {
 
     float2 refract_uv = pos / ap.game.screenSize;
 
-    if (EnableRefraction) {
+    if (RefractMode == Refract_ScreenSpace) {
         float3 refract_localNormal = texNormalTranslucent[uv];
         refract_localNormal = normalize(refract_localNormal * 2.0 - 1.0);
 
