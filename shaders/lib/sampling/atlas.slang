@@ -1,7 +1,7 @@
 struct AtlasBounds
 {
-    float2 CoordMin;
-    float2 CoordSize;
+    float2 CoordMin = 0;
+    float2 CoordSize = 0;
 
     float2 GetAtlasCoord(const in float2 localCoord) {
         return fract(localCoord) * CoordSize + CoordMin;

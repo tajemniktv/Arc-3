@@ -4,4 +4,7 @@ struct SettingsBuffer {
     float Water_WaveHeight;
     float ParallaxMaxDepth;
     float Post_Bloom_Strength;
+    float Post_ExposureMin;
+    float Post_ExposureMax;
+    float Post_ExposureRange;
 };

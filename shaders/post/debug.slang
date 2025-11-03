@@ -4,8 +4,6 @@ import lib.common;
 
 extern static const int DEBUG_MATERIAL;
 extern static const bool DEBUG_HISTOGRAM;
-extern static const float Scene_PostExposureMin;
-extern static const float Scene_PostExposureMax;
 
 static const int DEBUG_GB_ALBEDO = 1;
 static const int DEBUG_GB_NORMAL_GEO = 2;
@@ -13,7 +11,7 @@ static const int DEBUG_GB_NORMAL_TEX = 3;
 static const int DEBUG_GB_LMCOORD = 4;
 static const int DEBUG_GB_OCCLUSION = 5;
 
-ConstantBuffer<SceneBuffer> scene;
+StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;
@@ -60,11 +58,11 @@ float4 renderDebugOverlay(float2 pos : SV_Position) : SV_Target0 {
             color.gb = float2(step(previewCoord.y*previewCoord.y, sampleVal / float(ap.game.screenSize.x*ap.game.screenSize.y)));
             color.ra = float2(0.0, 1.0);
 
-            float meter = saturate(unmix(Scene_PostExposureMin, Scene_PostExposureMax, log2(scene.exposure)));
+            float meter = saturate(unmix(settings.Post_ExposureMin, settings.Post_ExposureMax, log2(scene[0].exposure)));
             if (abs(previewCoord.x - meter) < (4.0/ap.game.screenSize.x))
                 color.r = 1.0 - color.r;
 
-            // float shit2 = saturate(unmix(Scene_PostExposureMin, Scene_PostExposureMax, log2(Scene_AvgExposure) + Post_ExposureOffset));
+            // float shit2 = saturate(unmix(settings.Post_ExposureMin, settings.Post_ExposureMax, log2(Scene_AvgExposure) + Post_ExposureOffset));
             // if (abs(previewCoord.x - shit2) < 0.008)
             //     color.b = 1.0 - color.b;
         }

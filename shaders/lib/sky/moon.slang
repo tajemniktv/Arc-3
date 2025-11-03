@@ -14,7 +14,7 @@ static const float moon_axisTilt = -0.6;
 static const float moon_roughL = 0.92;
 static const float moon_f0 = 0.136;
 
-ConstantBuffer<SceneBuffer> scene;
+StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D texMoon;
 
@@ -53,5 +53,5 @@ float3 renderMoon(const in float3 viewLocalDir, const in float3 moonLocalPos, co
     // float D = SampleLightDiffuse(NoVm, NoLm, LoHm, moon_roughL) * (1.0 - F);
     // float S = SampleLightSpecular(NoLm, NoHm, NoVm, F, moon_roughL);
     // return MOON_LUMINANCE * NoLm * (D * albedo + S) * scene.sunColor;
-    return NoLm * scene.MoonColor * (1.0 - F_NoV) * albedo;
+    return NoLm * scene[0].MoonColor * (1.0 - F_NoV) * albedo;
 }

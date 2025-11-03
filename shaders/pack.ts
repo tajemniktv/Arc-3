@@ -1,17 +1,17 @@
 import {Options} from "./scripts/Options";
 import {BlockMap} from "./scripts/BlockMap";
 import {Dimensions} from "./scripts/Dimensions";
+import {FloodFill} from "./scripts/FloodFill";
 import {BufferFlipper} from "./scripts/BufferFlipper";
 import {StreamingBufferBuilder} from "./scripts/StreamingBufferBuilder";
 import {ApplyLightColors} from "./scripts/Lights";
 
 
-const Scene_PostExposureMin = -0.8;
-const Scene_PostExposureMax = 10.8;
-const Scene_PostExposureOffset = 0.0;
-const DEBUG_LIGHT_TILES = true;
+const DEBUG_LIGHT_TILES = false;
 
+let dimension: Dimensions;
 let BlockMappings: BlockMap;
+let floodfill: FloodFill | undefined;
 
 let texFinalPrevA: BuiltTexture | undefined;
 let texFinalPrevB: BuiltTexture | undefined;
@@ -19,19 +19,13 @@ let texFinalPrevRef: ActiveTextureReference | undefined;
 let imgFinalPrevRef: ActiveTextureReference | undefined;
 let settings: BuiltStreamingBuffer | undefined;
 
-let texFloodFillA: BuiltTexture | undefined;
-let texFloodFillB: BuiltTexture | undefined;
-let texFloodFill_read: ActiveTextureReference | undefined;
-let imgFloodFill_write: ActiveTextureReference | undefined;
-
-let _dimensions: Dimensions;
 let _renderConfig: RendererConfig;
 
 
 export function configureRenderer(config: RendererConfig): void {
     const options = new Options();
 
-    _dimensions = new Dimensions(config);
+    dimension = new Dimensions(config);
 
     // HACK: allows realtime settings
     _renderConfig = config;
@@ -50,7 +44,7 @@ export function configureRenderer(config: RendererConfig): void {
     config.render.moon = false;
     config.render.sun = false;
 
-    config.shadow.enabled = _dimensions.World_HasSky;
+    config.shadow.enabled = dimension.World_HasSky;
     config.shadow.resolution = options.Shadow_Resolution;
     config.shadow.distance = options.Shadow_Distance;
     config.shadow.cascades = 4;
@@ -74,8 +68,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     // BlockMappings.map('grass_block', 'BLOCK_GRASS');
 
     const globalExports = pipeline.createExportList()
-        .addInt('DIMENSION', _dimensions.Index)
-        .addBool('World_HasSky', _dimensions.World_HasSky)
+        .addInt('DIMENSION', dimension.Index)
+        .addBool('World_HasSky', dimension.World_HasSky)
         .addFloat('BLOCK_LUX', 200)
         .addInt('MATERIAL_FORMAT', options.Material_Format)
         .addInt('Shadow_Resolution', options.Shadow_Resolution)
@@ -98,7 +92,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     ApplyLightColors(options.Lighting_ColorCandles);
 
     pipeline.createBuffer("scene", 1024, false);
-    settings = pipeline.createStreamingBuffer("settings", 32);
+    settings = pipeline.createStreamingBuffer("settings", 128);
 
     const texFinalA = pipeline.createImageTexture("texFinalA", "imgFinalA")
         .width(screenWidth)
@@ -165,7 +159,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     let texShadowGB: BuiltTexture | undefined;
     let texSssGB: BuiltTexture | undefined;
     let texWeather: BuiltTexture | undefined;
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         texShadowGB = pipeline.createTexture('texShadowGB')
             .width(screenWidth)
             .height(screenHeight)
@@ -234,24 +228,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     if (options.Lighting_FloodFill_Enabled) {
-        texFloodFillA = pipeline.createImageTexture('texFloodFillA', 'imgFloodFillA')
-            .format(Format.RGBA16F)
-            .width(options.Lighting_FloodFill_Size)
-            .height(options.Lighting_FloodFill_Size)
-            .depth(options.Lighting_FloodFill_Size)
-            .clear(false)
-            .build();
-
-        texFloodFillB = pipeline.createImageTexture('texFloodFillB', 'imgFloodFillB')
-            .format(Format.RGBA16F)
-            .width(options.Lighting_FloodFill_Size)
-            .height(options.Lighting_FloodFill_Size)
-            .depth(options.Lighting_FloodFill_Size)
-            .clear(false)
-            .build();
-
-        texFloodFill_read = pipeline.createTextureReference('texFloodFill_read', 'imgFloodFill_read', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
-        imgFloodFill_write = pipeline.createTextureReference('texFloodFill_write', 'imgFloodFill_write', options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, options.Lighting_FloodFill_Size, Format.RGBA16F);
+        floodfill = new FloodFill(pipeline, options.Lighting_FloodFill_Size);
     }
 
     const texDiffuse = pipeline.createImageTexture('texDiffuse', 'imgDiffuse')
@@ -304,7 +281,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .compile();
     }
 
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         setup.createComposite('sky-transmit')
             .location('setup/sky-transmit', 'bakeSkyTransmission')
             .target(0, texSkyTransmit)
@@ -326,7 +303,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .workGroups(1, 1, 1)
         .compile();
 
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         preRender.createComposite('sky-view')
             .location('pre/sky-view', 'bakeSkyView')
             .target(0, texSkyView)
@@ -340,13 +317,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     }
 
     if (options.Lighting_FloodFill_Enabled) {
-        preRender.createCompute("floodfill")
-            .location("pre/floodfill", "floodfill")
-            .workGroups(
-                Math.ceil(options.Lighting_FloodFill_Size / 8),
-                Math.ceil(options.Lighting_FloodFill_Size / 8),
-                Math.ceil(options.Lighting_FloodFill_Size / 8))
-            .compile();
+        floodfill.create(preRender, options.Lighting_FloodFill_Size);
     }
 
     preRender.end();
@@ -363,7 +334,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             // .target(0, texShadowColor).blendOff(0);
     }
 
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         shadowSkyShader("shadow-sky", Usage.SHADOW).compile();
     }
 
@@ -452,7 +423,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         .exportBool('RENDER_PARTICLES', true)
         .compile();
 
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         pipeline.createObjectShader("weather", Usage.WEATHER)
             .location("objects/weather")
             .target(0, texWeather).blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
@@ -461,7 +432,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         
     const stagePostOpaque = pipeline.forStage(Stage.PRE_TRANSLUCENT);
 
-    if (_dimensions.World_HasSky) {
+    if (dimension.World_HasSky) {
         stagePostOpaque.createComposite("deferred-shadow-sky")
             .location("deferred/shadow-sky", "skyShadowSss")
             .target(0, texShadowGB)
@@ -536,25 +507,18 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             Math.ceil(screenHeight / 16.0),
             1)
         .overrideObject('texSource', finalFlipper.getReadTexture().name())
-        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
-        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
 
     postRender.createCompute('exposure-compute')
         .location('post/histogram-exposure', "computeExposure")
         .workGroups(1, 1, 1)
         .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
-        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
-        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
         .compile();
 
     postRender.createComposite("exposure-apply")
         .location("post/expose", "applyExposure")
         .target(0, finalFlipper.getWriteTexture())
         .overrideObject("texSource", finalFlipper.getReadTexture().name())
-        .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
-        .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
-        .exportFloat("Scene_PostExposureOffset", Scene_PostExposureOffset)
         .compile();
 
     if (options.Post_Bloom_Enabled) {
@@ -566,8 +530,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
         let maxLod = Math.log2(Math.min(screenWidth, screenHeight));
         maxLod = Math.floor(maxLod - 2);
         maxLod = Math.max(Math.min(maxLod, 8), 0);
-    
-        //print(`Bloom enabled with ${maxLod} LODs`);
     
         const texBloom = pipeline.createTexture('texBloom')
             .format(Format.RGB16F)
@@ -584,8 +546,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 .location("post/bloom", "applyBloomDown")
                 .target(0, texBloom, i)
                 .overrideObject("texSource", i == 0 ? finalFlipper.getReadTexture().name() : 'texBloom')
-                //.exportInt("TEX_SCALE", Math.pow(2, i))
-                //.exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i-1, 0))
                 .compile();
         }
@@ -594,7 +554,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             const bloomUpShader = bloomStage.createComposite(`bloom-up-${i}`)
                 .location('post/bloom', "applyBloomUp")
                 .overrideObject("texSource", finalFlipper.getReadTexture().name())
-                //.exportInt("TEX_SCALE", Math.pow(2, i+1))
                 .exportInt("BLOOM_INDEX", i)
                 .exportInt("MIP_INDEX", Math.max(i, 0));
                 
@@ -659,8 +618,6 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
             .exportInt('DEBUG_MATERIAL', options.Debug_Material)
             .exportBool('DEBUG_HISTOGRAM', options.Debug_Histogram)
-            .exportFloat("Scene_PostExposureMin", Scene_PostExposureMin)
-            .exportFloat("Scene_PostExposureMax", Scene_PostExposureMax)
             .compile();
     }
 
@@ -686,8 +643,7 @@ export function beginFrame(state : WorldState) : void {
     }
 
     if (options.Lighting_FloodFill_Enabled) {
-        texFloodFill_read.pointTo(alt ? texFloodFillA : texFloodFillB);
-        imgFloodFill_write.pointTo(alt ? texFloodFillB : texFloodFillA);
+        floodfill.update(alt);
     }
 
     settings.uploadData();
@@ -703,7 +659,10 @@ export function onSettingsChanged(pipeline: PipelineConfig) {
         .appendInt(options.Water_WaveDetail)
         .appendFloat(options.Water_WaveHeight)
         .appendFloat(options.Material_Parallax_Depth * 0.01)
-        .appendFloat(options.Post_Bloom_Strength * 0.01);
+        .appendFloat(options.Post_Bloom_Strength * 0.01)
+        .appendFloat(options.Post_Exposure_Min)
+        .appendFloat(options.Post_Exposure_Max)
+        .appendFloat(options.Post_Exposure_Range);
 }
 
 export function getBlockId(block: BlockState) : number {

@@ -20,8 +20,8 @@ VertexOutput vertexMain(Vertex input) {
     output.uv = input.uv();
     output.modelPos = input.pos().xyz;
 
+    output.blockId = -1;
     if (!EmissionMask) {
-        output.blockId = -1;
         if (let value = input.blockId()) output.blockId = value;
     }
 

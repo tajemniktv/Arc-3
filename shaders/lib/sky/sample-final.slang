@@ -8,7 +8,7 @@ import lib.sky.sun;
 
 extern static const bool WORLD_OVERWORLD = true;
 
-// ConstantBuffer<SceneBuffer> scene;
+// StructuredBuffer<SceneBuffer> scene;
 
 float3 sampleSkyFinal(const in float3 localPos, const in float3 viewLocalDir, bool isReflection) {
     // float3 starViewDir = getStarViewDir(viewLocalDir);
@@ -21,10 +21,10 @@ float3 sampleSkyFinal(const in float3 localPos, const in float3 viewLocalDir, bo
         intersectsPlanet = rayIntersectSphere(skyPos, viewLocalDir, groundRadiusMM) >= 0.0;
 
         if (!intersectsPlanet) {
-            float sunF = sun(viewLocalDir, scene.SunLocalDir);
-            if (sunF > 0.0) skyLight = 16.0 * sunF * scene.SunColor;
+            float sunF = sun(viewLocalDir, scene[0].SunLocalDir);
+            if (sunF > 0.0) skyLight = 16.0 * sunF * scene[0].SunColor;
 
-            float3 moonLocalPos = moon_distanceKm * scene.MoonLocalDir + localPos;
+            float3 moonLocalPos = moon_distanceKm * scene[0].MoonLocalDir + localPos;
             float moonHitDist = rayIntersectSphere(moonLocalPos, -viewLocalDir, moon_radiusKm);
 
             if (moonHitDist > 0.0) {
@@ -59,7 +59,7 @@ float3 sampleSkyFinal(const in float3 localPos, const in float3 viewLocalDir, bo
         if (intersectsPlanet) skyLight = 0.0;
         else skyLight *= sampleSkyTransmit(skyPos, viewLocalDir);
 
-        skyLight += sampleSkyView(skyPos, viewLocalDir, scene.SunLocalDir);
+        skyLight += sampleSkyView(skyPos, viewLocalDir, scene[0].SunLocalDir);
     }
 
     return skyLight;

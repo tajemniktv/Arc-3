@@ -29,7 +29,12 @@ export class Options {
 
     get Post_Bloom_Enabled(): boolean {return getBoolSetting('POST_BLOOM_ENABLED');}
     get Post_Bloom_Strength(): number {return getFloatSetting('POST_BLOOM_STRENGTH');}
+
     get Post_TAA_Enabled(): boolean {return getBoolSetting('POST_TAA_ENABLED');}
+
+    get Post_Exposure_Min(): number {return -0.8;}
+    get Post_Exposure_Max(): number {return 10.8;}
+    get Post_Exposure_Range(): number {return 9.6;}
 
     get Debug_Material(): number {return getIntSetting('DEBUG_MATERIAL');}
     get Debug_WhiteWorld(): boolean {return getBoolSetting('DEBUG_WHITEWORLD');}

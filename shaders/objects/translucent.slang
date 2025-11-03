@@ -10,6 +10,7 @@ import lib.sky.sample_irradiance;
 import lib.sky.sample_view;
 import lib.sky.sample_light;
 import lib.water.waves;
+import lib.sampling.dfd_normal;
 import lib.shadow;
 import lib.material.pbr;
 import lib.material.parallax;
@@ -26,6 +27,12 @@ extern static const uint BLOCK_WATER;
 
 static const bool SupportsParallax = Parallax_Enabled && !RENDER_PARTICLES;
 static const bool SupportsTexNormals = !RENDER_PARTICLES;
+
+
+uint GetWaveOctaveCount(const in float viewDist) {
+    return int(lerp(settings.Water_WaveDetail, 4.0, saturate(viewDist / 64.0)));
+}
+
 
 struct VertexOutput {
     float4 position : SV_Position;
@@ -60,7 +67,7 @@ VertexOutput vertexMain(Vertex input) {
         uint blockMapId = ap.blocks[output.blockId].customId;
         if (blockMapId == BLOCK_WATER) {
             float viewDist = length(output.viewPos);
-            int octaves = int(lerp(settings.Water_WaveDetail, 4.0, saturate(viewDist / 64.0)));
+            int octaves = GetWaveOctaveCount(viewDist);
             float3 waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves);
             output.localPos.y += waveOffset.y;
         }
@@ -127,14 +134,32 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
         geo_normal = normalize(input.normal);
     else has_normal = false;
 
+    float viewDist = length(input.localPos);
+
     float3 tex_normal = geo_normal;
     if (SupportsTexNormals) {
-        tex_normal = mat_normal(normalData.rgb);
+        uint blockMapId = ap.blocks[input.blockId].customId;
+        if (blockMapId == BLOCK_WATER) {
+            // float3 offsetLocalPos = input.localPos;
+            // offsetLocalPos.y -= waveH
 
-        float3 tangent = normalize(input.tangent.xyz);
-        float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
+            int octaves = GetWaveOctaveCount(viewDist);
+            float3 waveOffset = GetWaveHeight(ap.camera.position + input.localPos, input.light.y, ap.timing.timeElapsed, octaves);
+            //output.localPos.y += waveOffset.y;
 
-        tex_normal = normalize(mul(tex_normal, TBN));
+            // float3 dX = ddx(waveOffset);
+            // float3 dY = ddy(waveOffset);
+            tex_normal = getSurfaceNormal((waveOffset + input.localPos), float3(0,1,0));
+            albedo = float4(tex_normal * 0.5 + 0.5, 1.0);
+        }
+        else {
+            tex_normal = mat_normal(normalData.rgb);
+
+            float3 tangent = normalize(input.tangent.xyz);
+            float3x3 TBN = GetTBN(geo_normal, tangent, input.tangent.w);
+
+            tex_normal = normalize(mul(tex_normal, TBN));
+        }
     }
 
     float roughness = mat_roughness(specularData.r);
@@ -150,7 +175,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     float geo_NoLm = 1.0;
     if (has_normal) geo_NoLm = 1.0 - abs(dot(geo_normal, scene[0].SkyLightLocalDir));
 
-    float viewDist = length(input.localPos);
+    // float viewDist = length(input.localPos);
     float normal_bias = geo_NoLm * (viewDist * 0.006 + 0.06);
     float offset_bias = viewDist * 0.002;
 

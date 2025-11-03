@@ -11,7 +11,7 @@ float3 getSurfaceNormal(const in float3 position, const in float3 fallbackNormal
 
     float3 normal = cross(dX, dY);
 
-    if (dot(normal, normal) > EPSILON) {
+    if (dot(normal, normal) > 0.0) {
         normal = normalize(normal);
     }
     else {

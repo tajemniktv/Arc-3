@@ -36,7 +36,7 @@ VertexOutput vertexMain(Vertex input) {
 
 [[shader("fragment")]]
 float4 fragmentMain(VertexOutput input) : SV_Target0 {
-    float4 color;
+    float4 color = 0;
 
     if (input.blockId >= 0 && ap.blocks[input.blockId].isFluid) {
         color = float4(1.0, 1.0, 1.0, 0.02);

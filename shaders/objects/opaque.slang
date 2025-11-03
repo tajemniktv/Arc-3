@@ -14,7 +14,7 @@ extern static const bool TAA_Enabled;
 static const bool SupportsParallax = Parallax_Enabled && !RENDER_PARTICLES;
 static const bool SupportsTexNormals = !RENDER_PARTICLES;
 
-ConstantBuffer<SceneBuffer> scene;
+StructuredBuffer<SceneBuffer> scene;
 
 
 struct VertexOutput {
@@ -91,7 +91,7 @@ VertexOutput vertexMain(Vertex input) {
     }
 
     if (TAA_Enabled) {
-        output.position.xy += scene.taa_jitter * (2.0 * output.position.w);
+        output.position.xy += scene[0].taa_jitter * (2.0 * output.position.w);
     }
 
     return output;
