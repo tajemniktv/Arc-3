@@ -30,7 +30,7 @@ static const bool SupportsTexNormals = !RENDER_PARTICLES;
 
 
 uint GetWaveOctaveCount(const in float viewDist) {
-    return int(lerp(settings.Water_WaveDetail, 4.0, saturate(viewDist / 64.0)));
+    return int(lerp(settings.Water_WaveDetail, 6.0, saturate(viewDist / 80.0)));
 }
 
 
@@ -44,6 +44,8 @@ struct VertexOutput {
     float occlusion;
     float4 tangent;
     float3 viewPos;
+    float waveStrength;
+    float waveOffset;
     float3 localPos;
     nointerpolation uint blockId;
 };
@@ -59,20 +61,6 @@ VertexOutput vertexMain(Vertex input) {
     output.viewPos = mul3(input.viewMatrix(), modelPos);
     output.localPos = mul3(ap.camera.viewInv, output.viewPos);
 
-    output.blockId = -1;
-    // uint blockMapId = 0u;
-    if (let value = input.blockId()) {
-        output.blockId = value;
-
-        uint blockMapId = ap.blocks[output.blockId].customId;
-        if (blockMapId == BLOCK_WATER) {
-            float viewDist = length(output.viewPos);
-            int octaves = GetWaveOctaveCount(viewDist);
-            float3 waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves);
-            output.localPos.y += waveOffset.y;
-        }
-    }
-
     output.occlusion = 1.0;
     if (RENDER_TERRAIN) {
         output.occlusion = input.ao();
@@ -82,6 +70,26 @@ VertexOutput vertexMain(Vertex input) {
     if (let normal = input.normal()) {
         output.normal = mul(input.normalMatrix(), normal);
         output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
+    }
+
+    output.blockId = -1;
+    output.waveStrength = 0.0;
+    output.waveOffset = 0.0;
+    // uint blockMapId = 0u;
+    if (let value = input.blockId()) {
+        output.blockId = value;
+
+        uint blockMapId = ap.blocks[output.blockId].customId;
+        float3 worldPos = output.localPos + input.midBlock().value/64.0 + ap.camera.position;
+        bool isAir = ap.voxel[int3(floor(worldPos + output.normal))].blockId == 0;
+        if (blockMapId == BLOCK_WATER && isAir && output.normal.y > EPSILON) {
+            output.waveStrength = 1.0;
+
+            float viewDist = length(output.viewPos);
+            int octaves = GetWaveOctaveCount(viewDist);
+            output.waveOffset = GetWaveHeight(ap.camera.position + output.localPos, output.light.y, ap.timing.timeElapsed, octaves).y;
+            output.localPos.y += output.waveOffset;
+        }
     }
 
     //output.tangent = 0.0;
@@ -139,18 +147,15 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     float3 tex_normal = geo_normal;
     if (SupportsTexNormals) {
         uint blockMapId = ap.blocks[input.blockId].customId;
-        if (blockMapId == BLOCK_WATER) {
-            // float3 offsetLocalPos = input.localPos;
-            // offsetLocalPos.y -= waveH
+        if (blockMapId == BLOCK_WATER && input.waveStrength > 0.5) {
+            float3 offsetLocalPos = input.localPos;
+            offsetLocalPos.y -= input.waveOffset;
 
             int octaves = GetWaveOctaveCount(viewDist);
-            float3 waveOffset = GetWaveHeight(ap.camera.position + input.localPos, input.light.y, ap.timing.timeElapsed, octaves);
-            //output.localPos.y += waveOffset.y;
+            float3 waveOffset = GetWaveHeight(ap.camera.position + offsetLocalPos, input.light.y, ap.timing.timeElapsed, octaves);
 
-            // float3 dX = ddx(waveOffset);
-            // float3 dY = ddy(waveOffset);
-            tex_normal = getSurfaceNormal((waveOffset + input.localPos), float3(0,1,0));
-            albedo = float4(tex_normal * 0.5 + 0.5, 1.0);
+            tex_normal = getSurfaceNormal((waveOffset + offsetLocalPos), float3(0,1,0));
+            // albedo = float4(tex_normal * 0.5 + 0.5, 1.0);
         }
         else {
             tex_normal = mat_normal(normalData.rgb);

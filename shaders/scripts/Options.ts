@@ -1,7 +1,7 @@
 export class Options {
     get Sky_SeaLevel(): number {return 62;}
 
-    get Water_WaveDetail(): number {return 16;}
+    get Water_WaveDetail(): number {return 20;}
     get Water_WaveHeight(): number {return 1.0;}
 
     get Material_Format(): number {return getIntSetting('MATERIAL_FORMAT');}

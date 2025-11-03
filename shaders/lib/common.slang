@@ -15,6 +15,10 @@ float minOf(float x, float y, float z) {
     return min(x, min(y, z));
 }
 
+half3 minOf(half3 x, half3 y, half3 z) {
+    return min(x, min(y, z));
+}
+
 float3 minOf(float3 x, float3 y, float3 z) {
     return min(x, min(y, z));
 }
@@ -24,6 +28,10 @@ float3 minOf(float3 x, float3 y, float3 z) {
 // }
 
 float maxOf(float x, float y, float z) {
+    return max(x, max(y, z));
+}
+
+half3 maxOf(half3 x, half3 y, half3 z) {
     return max(x, max(y, z));
 }
 

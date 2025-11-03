@@ -6,14 +6,14 @@ static const uint groupResX = 16;
 static const uint groupResY = 16;
 
 [[vk::image_format("rgba16f")]]
-RWTexture2D<float4> imgFinal;
+RWTexture2D<half3> imgFinal;
 
-Sampler2D<float4> texSource;
+Sampler2D<half3> texSource;
 
 static const uint sharedBufferResX = groupResX+2;
 static const uint sharedBufferResY = groupResY+2;
 static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
-groupshared float3 sharedBuffer[sharedBufferSize];
+groupshared half3 sharedBuffer[sharedBufferSize];
 
 uint2 getSharedUV(const in uint z) {
     return uint2(
@@ -48,7 +48,7 @@ void sharpen(ComputeInput input) {
 
             if (i_shared < sharedBufferSize) {
                 int2 uv_i = getSharedUV(i_shared);
-                float3 color = texSource[uv_base + uv_i].rgb;
+                half3 color = texSource[uv_base + uv_i].rgb;
                 sharedBuffer[i_shared] = color;
             }
         }
@@ -63,11 +63,11 @@ void sharpen(ComputeInput input) {
         const float peak = -rcp(lerp(8.0, 5.0, sharpness));
 
         int2 uv = input.localPos.xy + 1;
-        float3 b = sharedBuffer[getSharedIndex(uv + int2( 0,-1))];
-        float3 d = sharedBuffer[getSharedIndex(uv + int2(-1, 0))];
-        float3 e = sharedBuffer[getSharedIndex(uv)];
-        float3 f = sharedBuffer[getSharedIndex(uv + int2( 1, 0))];
-        float3 h = sharedBuffer[getSharedIndex(uv + int2( 0, 1))];
+        half3 b = sharedBuffer[getSharedIndex(uv + int2( 0,-1))];
+        half3 d = sharedBuffer[getSharedIndex(uv + int2(-1, 0))];
+        half3 e = sharedBuffer[getSharedIndex(uv)];
+        half3 f = sharedBuffer[getSharedIndex(uv + int2( 1, 0))];
+        half3 h = sharedBuffer[getSharedIndex(uv + int2( 0, 1))];
 
         float3 area_min = minOf(minOf(d, e, f), b, h);
         float3 area_max = maxOf(maxOf(d, e, f), b, h);
@@ -78,6 +78,6 @@ void sharpen(ComputeInput input) {
         float3 weight_inv = rcp(1.0 + 4.0*w);
         float3 color = ((b + d + f + h) * w + e) * weight_inv;
 
-        imgFinal[input.globalPos.xy] = float4(saturate(color), 1.0);
+        imgFinal[input.globalPos.xy] = half3(saturate(color));
     }
 }

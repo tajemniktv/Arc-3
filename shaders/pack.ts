@@ -108,6 +108,20 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     const finalFlipper = new BufferFlipper(texFinalA, texFinalB);
 
+    const texFinalTranslucent = pipeline.createTexture("texFinalTranslucent")
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA16F)
+        .clearColor(0, 0, 0, 0)
+        .build();
+
+    const texNormalTranslucent = pipeline.createTexture("texNormalTranslucent")
+        .width(screenWidth)
+        .height(screenHeight)
+        .format(Format.RGBA8)
+        .clearColor(0, 0, 0, 0)
+        .build();
+
     let texVelocity : BuiltTexture | undefined;
     if (options.Post_TAA_Enabled) {
         texFinalPrevA = pipeline.createImageTexture("texFinalPrevA", "imgFinalPrevA")
@@ -403,7 +417,8 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     function translucentObjectShader(name: string, usage: ProgramUsage) {
         const shader = pipeline.createObjectShader(name, usage)
             .location("objects/translucent")
-            .target(0, finalFlipper.getWriteTexture()).blendFunc(0, Func.ONE, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
+            .target(0, texFinalTranslucent).blendFunc(0, Func.ONE, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            .target(1, texNormalTranslucent).blendFunc(1, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO);
 
         //if (options.Post_TAA_Enabled) shader.target(1, texVelocity).blendOff(1);
         return shader;
@@ -479,11 +494,11 @@ export function configurePipeline(pipeline: PipelineConfig): void {
 
     stagePostOpaque.end();
 
-    finalFlipper.flip();
+    // finalFlipper.flip();
 
     const postRender = pipeline.forStage(Stage.POST_RENDER);
 
-    //finalFlipper.flip();
+    finalFlipper.flip();
 
     postRender.createComposite("composite-overlays")
         .location("composite/overlays", "applyOverlays")
