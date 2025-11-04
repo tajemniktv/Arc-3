@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.light.fresnel;
 import lib.light.floodfill;
@@ -21,7 +20,6 @@ extern static const bool RENDER_TERRAIN = false;
 extern static const bool RENDER_PARTICLES = false;
 extern static const bool Water_WaveEnabled = false;
 extern static const bool FloodFill_Enabled;
-extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 
 extern static const uint BLOCK_WATER;
@@ -74,6 +72,7 @@ VertexOutput vertexMain(Vertex input) {
         output.normal = mul(float3x3(ap.camera.viewInv), output.normal);
     }
 
+    bool isWater = false;
     output.blockId = -1;
     output.waveStrength = 0.0;
     output.waveOffset = 0.0;
@@ -84,8 +83,10 @@ VertexOutput vertexMain(Vertex input) {
         if (Water_WaveEnabled) {
             uint blockMapId = ap.blocks[output.blockId].customId;
             float3 worldPos = output.localPos + input.midBlock().value/64.0 + ap.camera.position;
-            bool isAir = ap.voxel[int3(floor(worldPos + output.normal))].blockId == 0;
-            if (blockMapId == BLOCK_WATER && isAir && output.normal.y > EPSILON) {
+            bool isFacingAir = ap.voxel[int3(floor(worldPos + output.normal))].blockId == 0;
+            isWater = blockMapId == BLOCK_WATER;
+
+            if (isWater) {
                 output.waveStrength = 1.0;
 
                 float viewDist = length(output.viewPos);
@@ -117,6 +118,10 @@ VertexOutput vertexMain(Vertex input) {
     if (TAA_Enabled) {
         output.position.xy += scene[0].taa_jitter * (2.0 * output.position.w);
     }
+
+    // if (isWater) {
+    //     output.normal
+    // }
 
     return output;
 }
@@ -310,7 +315,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     //     randomize_reflection(refractSurfaceNormal, localGeoNormal, roughness);
     // }
 
-    refractSurfaceNormal = normalize(refractSurfaceNormal);
+    refractSurfaceNormal = normalize(refractSurfaceNormal + 0.2 * geo_normal);
     output.normal = float4(refractSurfaceNormal * 0.5 + 0.5, 1.0);
     
     return output;

@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.matrix;
 import lib.sampling.ERP;
@@ -13,8 +12,6 @@ static const float moon_rotationSpeed = 0.0064;
 static const float moon_axisTilt = -0.6;
 static const float moon_roughL = 0.92;
 static const float moon_f0 = 0.136;
-
-StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D texMoon;
 

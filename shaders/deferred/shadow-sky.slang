@@ -1,11 +1,8 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.material.pbr;
 import lib.sampling.IGN;
 import lib.shadow;
-
-extern static const bool TAA_Enabled;
 
 Sampler2D<float> solidDepthTex;
 

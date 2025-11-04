@@ -16,8 +16,6 @@ extern static const float SSS_MaxDist = 6.0;
 static const float GoldenAngle = PI * (3.0 - sqrt(5.0));
 static const float PHI = (1.0 + sqrt(5.0)) / 2.0;
 
-StructuredBuffer<SceneBuffer> scene;
-
 Sampler2DArray<float> shadowMap;
 Sampler2DArray<float> solidShadowMap;
 Sampler2DArrayShadow solidShadowMapFiltered;

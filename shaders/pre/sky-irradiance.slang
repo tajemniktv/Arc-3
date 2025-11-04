@@ -1,12 +1,9 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.sampling.IGN;
 import lib.sampling.ERP;
 import lib.sky.common;
 import lib.sky.sample_view;
-
-StructuredBuffer<SceneBuffer> scene;
 
 
 float3 CalculateIrradiance(const in float2 uv, const in float3 normal) {

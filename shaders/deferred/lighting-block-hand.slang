@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.material.pbr;
 import lib.point_lights;
@@ -8,9 +7,6 @@ import lib.light.hand;
 
 extern static const bool PointLight_Enabled;
 extern static const bool FloodFill_Enabled;
-extern static const bool TAA_Enabled;
-
-StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D<float> solidDepthTex;
 

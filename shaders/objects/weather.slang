@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.sky.common;
 import lib.sky.sample_transmit;
@@ -7,7 +6,6 @@ import lib.sky.sample_irradiance;
 import lib.shadow;
 import lib.material.pbr;
 
-extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 
 

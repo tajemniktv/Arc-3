@@ -1,5 +1,4 @@
 import lib.common;
-import buffers.scene;
 import lib.sky.common;
 import lib.sky.sample_transmit;
 import lib.sky.sample_view;
@@ -7,8 +6,6 @@ import lib.sky.moon;
 import lib.sky.sun;
 
 extern static const bool WORLD_OVERWORLD = true;
-
-// StructuredBuffer<SceneBuffer> scene;
 
 float3 sampleSkyFinal(const in float3 localPos, const in float3 viewLocalDir, bool isReflection) {
     // float3 starViewDir = getStarViewDir(viewLocalDir);

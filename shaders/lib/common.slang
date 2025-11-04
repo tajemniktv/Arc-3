@@ -1,7 +1,11 @@
 import aperture;
+import buffers.scene;
 import buffers.settings;
 
 ConstantBuffer<SettingsBuffer> settings;
+StructuredBuffer<SceneBuffer> scene;
+
+extern static const bool TAA_Enabled;
 
 static const float PI = 3.14159265358;
 static const float EPSILON = 1.0e-6;

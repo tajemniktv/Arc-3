@@ -1,7 +1,5 @@
-import buffers.scene;
+import lib.common;
 import lib.sky.common;
-
-StructuredBuffer<SceneBuffer> scene;
 
 
 void getScatteringValues(float3 pos, out float3 rayleighScattering, out float mieScattering, out float3 extinction) {

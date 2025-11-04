@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.sampling.atlas;
 import lib.sampling.lmcoord;
@@ -9,12 +8,9 @@ import lib.tbn;
 
 extern static const bool RENDER_TERRAIN = false;
 extern static const bool RENDER_PARTICLES = false;
-extern static const bool TAA_Enabled;
 
 static const bool SupportsParallax = Parallax_Enabled && !RENDER_PARTICLES;
 static const bool SupportsTexNormals = !RENDER_PARTICLES;
-
-StructuredBuffer<SceneBuffer> scene;
 
 
 struct VertexOutput {
@@ -100,6 +96,7 @@ VertexOutput vertexMain(Vertex input) {
 
 struct FragmentOutput {
     float4 albedo : SV_Target0;
+    // float3 position : SV_Target1;
     uint2 normals : SV_Target1;
     uint2 mat_lit : SV_Target2;
     float2 velocity : SV_Target3;
@@ -159,6 +156,7 @@ FragmentOutput fragmentMain(VertexOutput input) {
 
     FragmentOutput output;
     output.albedo = color;
+    // output.position = input.localPos;
     output.normals.r = packUnorm4x8(float4(geo_normal * 0.5 + 0.5, 0.0));
     output.normals.g = packUnorm4x8(float4(tex_normal * 0.5 + 0.5, 0.0));
     output.mat_lit.r = packUnorm4x8(specularData);

@@ -153,6 +153,13 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .build();
     }
 
+    // const texPositionGB = pipeline.createTexture('texPositionGB')
+    //     .width(screenWidth)
+    //     .height(screenHeight)
+    //     .format(Format.RGB16F)
+    //     .clearColor(0, 0, 0, 0)
+    //     .build();
+
     const texAlbedoGB = pipeline.createTexture('texAlbedoGB')
         .width(screenWidth)
         .height(screenHeight)
@@ -290,60 +297,58 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     //}
 
 
-    const setup = pipeline.forStage(Stage.SCREEN_SETUP);
-
-    setup.createCompute("setup-scene")
-        .location("setup/scene-setup", "setupScene")
-        .workGroups(1, 1, 1)
-        .compile();
-
-    if (!options.Debug_Histogram) {
-        setup.createCompute('histogram-clear')
-            .location('setup/histogram-clear', "clearHistogram")
+    withStage(pipeline, Stage.SCREEN_SETUP, setupStage => {
+        setupStage.createCompute("setup-scene")
+            .location("setup/scene-setup", "setupScene")
             .workGroups(1, 1, 1)
-            .compile();
-    }
-
-    if (dimension.World_HasSky) {
-        setup.createComposite('sky-transmit')
-            .location('setup/sky-transmit', 'bakeSkyTransmission')
-            .target(0, texSkyTransmit)
+            .overrideObject('scene_writer', 'scene')
             .compile();
 
-        setup.createComposite('sky-multi-scatter')
-            .location('setup/sky-multi-scatter', 'bakeSkyMultiScattering')
-            .target(0, texSkyMultiScatter)
+        if (!options.Debug_Histogram) {
+            setupStage.createCompute('histogram-clear')
+                .location('setup/histogram-clear', "clearHistogram")
+                .workGroups(1, 1, 1)
+                .compile();
+        }
+
+        if (dimension.World_HasSky) {
+            setupStage.createComposite('sky-transmit')
+                .location('setup/sky-transmit', 'bakeSkyTransmission')
+                .target(0, texSkyTransmit)
+                .compile();
+
+            setupStage.createComposite('sky-multi-scatter')
+                .location('setup/sky-multi-scatter', 'bakeSkyMultiScattering')
+                .target(0, texSkyMultiScatter)
+                .compile();
+        }
+    });
+
+
+    withStage(pipeline, Stage.PRE_RENDER, beginStage => {
+        beginStage.createCompute("begin-scene")
+            .location("pre/scene-begin", "beginScene")
+            .workGroups(1, 1, 1)
+            .overrideObject('scene_writer', 'scene')
             .compile();
-    }
 
-    setup.end();
+        if (dimension.World_HasSky) {
+            beginStage.createComposite('sky-view')
+                .location('pre/sky-view', 'bakeSkyView')
+                .target(0, texSkyView)
+                .compile();
 
+            beginStage.createComposite('sky-irradiance')
+                .location('pre/sky-irradiance', 'bakeSkyIrradiance')
+                .target(0, texSkyIrradiance)
+                .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+                .compile();
+        }
 
-    const preRender = pipeline.forStage(Stage.PRE_RENDER);
-
-    preRender.createCompute("begin-scene")
-        .location("pre/scene-begin", "beginScene")
-        .workGroups(1, 1, 1)
-        .compile();
-
-    if (dimension.World_HasSky) {
-        preRender.createComposite('sky-view')
-            .location('pre/sky-view', 'bakeSkyView')
-            .target(0, texSkyView)
-            .compile();
-
-        preRender.createComposite('sky-irradiance')
-            .location('pre/sky-irradiance', 'bakeSkyIrradiance')
-            .target(0, texSkyIrradiance)
-            .blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
-            .compile();
-    }
-
-    if (options.Lighting_FloodFill_Enabled) {
-        floodfill.create(preRender, options.Lighting_FloodFill_Size);
-    }
-
-    preRender.end();
+        if (options.Lighting_FloodFill_Enabled) {
+            floodfill.create(beginStage, options.Lighting_FloodFill_Size);
+        }
+    });
 
 
     function discardShader(name: string, usage: ProgramUsage) {
@@ -395,6 +400,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             .exportInt('Parallax_SampleCount', options.Material_Parallax_SampleCount)
             .exportBool('Parallax_Optimize', options.Material_Parallax_Optimize)
             .target(0, texAlbedoGB).blendOff(0)//.blendFunc(0, Func.SRC_ALPHA, Func.ONE_MINUS_SRC_ALPHA, Func.ONE, Func.ZERO)
+            // .target(1, texPositionGB).blendOff(1)
             .target(1, texNormalGB).blendOff(1)
             .target(2, texMatLightGB).blendOff(2);
 
@@ -543,6 +549,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
             finalStage.createCompute('exposure-compute')
                 .location('post/histogram-exposure', "computeExposure")
                 .workGroups(1, 1, 1)
+                .overrideObject('scene_writer', 'scene')
                 .exportBool("DEBUG_HISTOGRAM", options.Debug_Histogram)
                 .compile();
 

@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.material.pbr;
 import lib.light.brdf;
@@ -9,7 +8,6 @@ import lib.hsv;
 
 extern static const float BLOCK_LUX;
 extern static const int PointLight_MaxCount;
-extern static const bool TAA_Enabled;
 extern static const bool DEBUG_LIGHT_TILES;
 
 static const uint groupResX = 16;
@@ -21,8 +19,6 @@ static const uint sharedBufferSize = sharedBufferResX*sharedBufferResY;
 groupshared uint sharedLightList[256];
 groupshared Atomic<uint> depthMinInt, depthMaxInt;
 groupshared Atomic<uint> counter;
-
-StructuredBuffer<SceneBuffer> scene;
 
 [[vk::image_format("rgba16f")]]
 RWTexture2D<half3> imgDiffuse;

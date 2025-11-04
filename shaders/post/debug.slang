@@ -1,5 +1,4 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 
 extern static const int DEBUG_MATERIAL;
@@ -10,8 +9,6 @@ static const int DEBUG_GB_NORMAL_GEO = 2;
 static const int DEBUG_GB_NORMAL_TEX = 3;
 static const int DEBUG_GB_LMCOORD = 4;
 static const int DEBUG_GB_OCCLUSION = 5;
-
-StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texAlbedoGB;
 Sampler2D<uint2> texNormalGB;

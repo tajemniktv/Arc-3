@@ -1,8 +1,5 @@
 import aperture;
-import buffers.scene;
 import lib.common;
-
-StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D<float4> texSource;
 

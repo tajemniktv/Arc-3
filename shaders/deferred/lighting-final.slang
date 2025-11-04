@@ -1,19 +1,16 @@
 import aperture;
-import buffers.scene;
 import lib.common;
 import lib.material.pbr;
 import lib.sky.sample_final;
 
 extern static const float BLOCK_LUX;
-extern static const bool TAA_Enabled;
 extern static const bool Debug_WhiteWorld;
 extern static const bool World_HasSky;
-
-StructuredBuffer<SceneBuffer> scene;
 
 Sampler2D<float> solidDepthTex;
 
 Sampler2D<half4> texAlbedoGB;
+// Sampler2D<float3> texPositionGB;
 Sampler2D<uint2> texNormalGB;
 Sampler2D<uint2> texMatLightGB;
 Sampler2D<half3> texDiffuse;

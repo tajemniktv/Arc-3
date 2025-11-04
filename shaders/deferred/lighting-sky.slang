@@ -10,10 +10,6 @@ import lib.sky.sample_irradiance;
 import lib.sky.sample_view;
 import lib.sky.sample_light;
 
-extern static const bool TAA_Enabled;
-
-StructuredBuffer<SceneBuffer> scene;
-
 Sampler2D<float> solidDepthTex;
 
 Sampler2D<float4> texAlbedoGB;

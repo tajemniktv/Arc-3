@@ -8,7 +8,7 @@ extern static const float Scene_PostExposureSpeed = 0.8;
 static const float Exposure_logLumRange = settings.Post_ExposureMax - settings.Post_ExposureMin;
 static const float Exposure_logLumRangeInv = rcp(Exposure_logLumRange);
 
-RWStructuredBuffer<SceneBuffer> scene;
+RWStructuredBuffer<SceneBuffer> scene_writer;
 
 [[vk::image_format("r32ui")]]
 RWTexture1D<uint> imgHistogram;
@@ -95,10 +95,10 @@ void computeExposure(uint groupIndex : SV_GroupIndex) {
 		if (ap.timing.frameCounter != 0) {
 			float timeF = 1.0 - exp(-max(Scene_PostExposureSpeed * ap.timing.lastFrameTime, 1.0e-12));
 
-			float lumLastFrame = clamp(scene[0].exposure, 0.0, 65000.0);
+			float lumLastFrame = clamp(scene_writer[0].exposure, 0.0, 65000.0);
 			adaptedLum = lumLastFrame + (weightedAvgLum - lumLastFrame) * timeF;
 		}
 
-		scene[0].exposure = adaptedLum;
+		scene_writer[0].exposure = adaptedLum;
 	}
 }
