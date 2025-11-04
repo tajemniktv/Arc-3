@@ -432,5 +432,6 @@ Other
 shaders/*.js
 !LICENSE.md
 !CHANGELOG.md
+*.js.map
 
 
