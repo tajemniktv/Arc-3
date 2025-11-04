@@ -29,6 +29,27 @@ screen.LIGHTING=Lighting
 option.LIGHTING_COLOR_CANDLES=Colored Candles
 
 
+screen.LIGHTING_REFLECTIONS=Reflections
+
+option.LIGHTING_REFLECT_ENABLED=Enabled
+
+option.LIGHTING_REFLECT_MODE=Mode
+value.LIGHTING_REFLECT_MODE.0=None
+value.LIGHTING_REFLECT_MODE.1=Sky Only
+value.LIGHTING_REFLECT_MODE.2=Screen-Space
+value.LIGHTING_REFLECT_MODE.3=World-Space
+
+
+screen.LIGHTING_REFRACTION=Refraction
+
+option.LIGHTING_REFRACT_ENABLED=Enabled
+
+option.LIGHTING_REFRACT_MODE=Mode
+value.LIGHTING_REFRACT_MODE.0=None
+value.LIGHTING_REFRACT_MODE.1=Screen-Space
+value.LIGHTING_REFRACT_MODE.2=World-Space
+
+
 screen.LIGHTING_POINT=Point Lights
 
 option.LIGHTING_POINT_ENABLED=Enabled

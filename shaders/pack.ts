@@ -466,7 +466,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
     withStage(pipeline, Stage.POST_RENDER, postRenderStage => {
         finalFlipper.flip();
 
-        if (options.Material_RefractMode == Refract_WorldSpace) {
+        if (options.Lighting_Refraction_Mode == Refract_WorldSpace) {
             // TODO: rewrite opaque gbuffer data with WS refraction?
         }
 
@@ -523,7 +523,7 @@ export function configurePipeline(pipeline: PipelineConfig): void {
                 .location("composite/overlays", "applyOverlays")
                 .target(0, finalFlipper.getWriteTexture())
                 .overrideObject('texSource', finalFlipper.getReadTexture().name())
-                .exportInt('RefractMode', options.Material_RefractMode)
+                .exportInt('RefractMode', options.Lighting_Refraction_Mode)
                 .compile();
         });
 

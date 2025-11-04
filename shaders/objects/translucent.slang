@@ -316,7 +316,7 @@ FragmentOutput fragmentMain(VertexOutput input, float2 fragPos : SV_Position) {
     // }
 
     refractSurfaceNormal = normalize(refractSurfaceNormal + 0.2 * geo_normal);
-    output.normal = float4(refractSurfaceNormal * 0.5 + 0.5, 1.0);
+    output.normal = float4(tex_normal * 0.5 + 0.5, 1.0);
     
     return output;
 }

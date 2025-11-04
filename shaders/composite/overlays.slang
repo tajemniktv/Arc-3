@@ -18,7 +18,8 @@ Sampler2D<half4> texWeather;
 
 
 void ss_refract(inout float2 uv, const in float3 viewPos, const in float3 refractLocalNormal, float eta) {
-    const float3 viewDir = float3(0.0, 0.0, -1.0);
+    // const float3 viewDir = float3(0.0, 0.0, -1.0);
+    float3 viewDir = normalize(viewPos);
     float3 refractViewNormal = mul(float3x3(ap.camera.view), refractLocalNormal);
     float3 refractViewDir = refract(viewDir, refractViewNormal, eta);
 

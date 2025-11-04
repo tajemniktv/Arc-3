@@ -2,11 +2,10 @@ export class Options {
     get Sky_SeaLevel(): number {return 62;}
 
     get Water_Wave_Enabled(): boolean {return true;}
-    get Water_WaveDetail(): number {return 20;}
-    get Water_WaveHeight(): number {return 0.5;}
+    get Water_WaveDetail(): number {return 18;}
+    get Water_WaveHeight(): number {return 0.8;}
 
     get Material_Format(): number {return getIntSetting('MATERIAL_FORMAT');}
-    get Material_RefractMode(): number {return 1;}
 
     get Material_Parallax_Enabled(): boolean {return getBoolSetting('MATERIAL_PARALLAX_ENABLED');}
     get Material_Parallax_Type(): number {return getIntSetting('MATERIAL_PARALLAX_TYPE');}
@@ -15,6 +14,12 @@ export class Options {
     get Material_Parallax_Optimize(): boolean {return getBoolSetting('MATERIAL_PARALLAX_OPTIMIZE');}
     
     get Lighting_ColorCandles(): boolean {return getBoolSetting('LIGHTING_COLOR_CANDLES');}
+
+    // get Lighting_Reflection_Enabled(): boolean {return getBoolSetting('LIGHTING_REFLECT_ENABLED');}
+    get Lighting_Reflection_Mode(): number {return getIntSetting('LIGHTING_REFLECT_MODE');}
+
+    // get Lighting_Refraction_Enabled(): boolean {return getBoolSetting('LIGHTING_REFRACT_ENABLED');}
+    get Lighting_Refraction_Mode(): number {return getIntSetting('LIGHTING_REFRACT_MODE');}
 
     get Lighting_FloodFill_Enabled(): boolean {return getBoolSetting('LIGHTING_FLOODFILL_ENABLED');}
     get Lighting_FloodFill_Size(): number {return getIntSetting('LIGHTING_FLOODFILL_SIZE');}
